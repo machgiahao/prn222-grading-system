@@ -1,0 +1,58 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "E:\\FPT\\Semester_8\\PRN232\\Prn222_Grading_System\\Backend\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{49FE7DF7-938B-4AD4-9AC8-9D23B8F42BBA}|SharedLibrary\\SharedLibrary.csproj|e:\\fpt\\semester_8\\prn232\\prn222_grading_system\\backend\\sharedlibrary\\exceptions\\handler\\customexceptionhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{49FE7DF7-938B-4AD4-9AC8-9D23B8F42BBA}|SharedLibrary\\SharedLibrary.csproj|solutionrelative:sharedlibrary\\exceptions\\handler\\customexceptionhandler.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{49FE7DF7-938B-4AD4-9AC8-9D23B8F42BBA}|SharedLibrary\\SharedLibrary.csproj|e:\\fpt\\semester_8\\prn232\\prn222_grading_system\\backend\\sharedlibrary\\sharedlibrary.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{49FE7DF7-938B-4AD4-9AC8-9D23B8F42BBA}|SharedLibrary\\SharedLibrary.csproj|solutionrelative:sharedlibrary\\sharedlibrary.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "SharedLibrary",
+              "DocumentMoniker": "E:\\FPT\\Semester_8\\PRN232\\Prn222_Grading_System\\Backend\\SharedLibrary\\SharedLibrary.csproj",
+              "RelativeDocumentMoniker": "SharedLibrary\\SharedLibrary.csproj",
+              "ToolTip": "E:\\FPT\\Semester_8\\PRN232\\Prn222_Grading_System\\Backend\\SharedLibrary\\SharedLibrary.csproj",
+              "RelativeToolTip": "SharedLibrary\\SharedLibrary.csproj",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAsAAABhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-28T15:41:26.301Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CustomExceptionHandler.cs",
+              "DocumentMoniker": "E:\\FPT\\Semester_8\\PRN232\\Prn222_Grading_System\\Backend\\SharedLibrary\\Exceptions\\Handler\\CustomExceptionHandler.cs",
+              "RelativeDocumentMoniker": "SharedLibrary\\Exceptions\\Handler\\CustomExceptionHandler.cs",
+              "ToolTip": "E:\\FPT\\Semester_8\\PRN232\\Prn222_Grading_System\\Backend\\SharedLibrary\\Exceptions\\Handler\\CustomExceptionHandler.cs",
+              "RelativeToolTip": "SharedLibrary\\Exceptions\\Handler\\CustomExceptionHandler.cs",
+              "ViewState": "AgIAABMAAAAAAAAAAAAAAAwAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T15:32:36.704Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
