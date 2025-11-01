@@ -1,0 +1,58 @@
+# File này bỏ qua các file "build", "secret" và file rác của IDE
+# cho cả Backend (.NET) và Frontend (JS).
+
+# === 1. BÍ MẬT (SECRETS) - Rất quan trọng ===
+
+# Bỏ qua TẤT CẢ các file appsettings.Development.json
+Backend/**/appsettings.Development.json
+
+# Bỏ qua các file môi trường của Frontend
+Frontend/.env
+Frontend/.env.local
+Frontend/.env.development.local
+Frontend/.env.test.local
+Frontend/.env.production.local
+
+# Bỏ qua các file bí mật của user
+*.user
+usersecrets.id
+secrets.xml
+
+
+# === 2. BACKEND (.NET) ===
+# Bỏ qua các thư mục build "bin" và "obj"
+Backend/**/[Bb]in/
+Backend/**/[Oo]bj/
+
+
+# === 3. FRONTEND (JavaScript / Node.js) ===
+# Bỏ qua thư mục thư viện (rất nặng)
+Frontend/node_modules/
+
+# Bỏ qua thư mục build (sản phẩm cuối cùng)
+Frontend/build/
+Frontend/dist/
+
+# Bỏ qua các file log và report
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+Frontend/coverage/
+
+
+# === 4. IDE & HỆ ĐIỀU HÀNH (Chung) ===
+# Bỏ qua thư mục .vs của Visual Studio (nằm ở gốc)
+/.vs/
+Backend/.vs/
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains Rider
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
