@@ -13,4 +13,6 @@ public interface ISubjectRepository
     void Add(Subject subject);
 
     void Remove(Subject subject);
+
+    IQueryable<Subject> GetQueryable();
 }

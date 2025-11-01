@@ -1,13 +1,14 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using ExamService.Application.Dtos;
 using ExamService.Domain.Repositories;
 using SharedLibrary.Common.CQRS;
 
 namespace ExamService.Application.Subjects.Queries;
 
-public sealed record GetAllSubjectsQuery() : IQuery<List<SubjectDto>>;
+public sealed record GetAllSubjectsQuery() : IQuery<IQueryable<SubjectDto>>;
 
-public class GetAllSubjectsQueryHandler : IQueryHandler<GetAllSubjectsQuery, List<SubjectDto>>
+public class GetAllSubjectsQueryHandler : IQueryHandler<GetAllSubjectsQuery, IQueryable<SubjectDto>>
 {
     private readonly ISubjectRepository _subjectRepository;
     private readonly IMapper _mapper;
@@ -18,9 +19,13 @@ public class GetAllSubjectsQueryHandler : IQueryHandler<GetAllSubjectsQuery, Lis
         _mapper = mapper;
     }
 
-    public async Task<List<SubjectDto>> Handle(GetAllSubjectsQuery request, CancellationToken cancellationToken)
+    public Task<IQueryable<SubjectDto>> Handle(GetAllSubjectsQuery query, CancellationToken cancellationToken)
     {
-        var subjects = await _subjectRepository.GetAllAsync(cancellationToken);
-        return _mapper.Map<List<SubjectDto>>(subjects);
+        var queryableSubjects = _subjectRepository.GetQueryable();
+
+        var queryableDto = queryableSubjects
+            .ProjectTo<SubjectDto>(_mapper.ConfigurationProvider);
+
+        return Task.FromResult(queryableDto);
     }
 }

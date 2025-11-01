@@ -3,12 +3,14 @@ using ExamService.Application.Subjects.Commands;
 using ExamService.Application.Subjects.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OData.Query;
+using Microsoft.AspNetCore.OData.Routing.Controllers;
 
 namespace ExamService.API.Controllers;
 
 [ApiController]
-[Route("api/subject")] 
-public class SubjectController : ControllerBase
+[Route("api/subjects")] 
+public class SubjectController : ODataController
 {
     private readonly IMediator _mediator;
 
@@ -26,6 +28,7 @@ public class SubjectController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [EnableQuery]
     public async Task<ActionResult<SubjectDto>> GetSubjectById(Guid id)
     {
         var query = new GetSubjectByIdQuery(id);
@@ -33,12 +36,13 @@ public class SubjectController : ControllerBase
         return Ok(result);
     }
 
+    [EnableQuery]
     [HttpGet]
-    public async Task<ActionResult<List<SubjectDto>>> GetAllSubjects()
+    public async Task<IQueryable<SubjectDto>> GetAllSubjects()
     {
         var query = new GetAllSubjectsQuery();
         var result = await _mediator.Send(query);
-        return Ok(result);
+        return result;
     }
 
     [HttpPut("{id:guid}")]

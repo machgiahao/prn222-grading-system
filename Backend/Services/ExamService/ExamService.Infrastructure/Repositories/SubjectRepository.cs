@@ -35,6 +35,11 @@ public class SubjectRepository : ISubjectRepository
         return await _context.Subjects.FindAsync(new object[] { id }, cancellationToken);
     }
 
+    public IQueryable<Subject> GetQueryable()
+    {
+        return _context.Subjects.AsQueryable();
+    }
+
     public void Remove(Subject subject)
     {
         _context.Subjects.Remove(subject);

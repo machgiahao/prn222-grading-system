@@ -35,6 +35,11 @@ public class SemesterRepository : ISemesterRepository
         return await _context.Semesters.FindAsync(new object[] { id }, cancellationToken);
     }
 
+    public IQueryable<Semester> GetQueryable()
+    {
+        return _context.Semesters.AsQueryable();
+    }
+
     public void Remove(Semester semester)
     {
         _context.Semesters.Remove(semester);

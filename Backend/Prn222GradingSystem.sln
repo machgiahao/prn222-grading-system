@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamService.Infrastructure"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamService.Application", "Services\ExamService\ExamService.Application\ExamService.Application.csproj", "{F8747CD8-7F4E-3E44-70D2-21B34D9CB045}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IdentityService", "IdentityService", "{CBCA71B4-75C7-4256-8CC3-FB6AC6B535A3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,7 @@ Global
 		{E663BF9A-02AE-4C21-A6FE-467B048427EF} = {35810C94-314A-4226-B3F5-B4416B2198A2}
 		{1846A143-D644-402B-8AE0-40225E6F93E7} = {35810C94-314A-4226-B3F5-B4416B2198A2}
 		{F8747CD8-7F4E-3E44-70D2-21B34D9CB045} = {35810C94-314A-4226-B3F5-B4416B2198A2}
+		{CBCA71B4-75C7-4256-8CC3-FB6AC6B535A3} = {3F3B293F-8B0B-4977-8A69-1B4105631173}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7D791AAF-676D-40B5-8C48-1EA136DD272D}

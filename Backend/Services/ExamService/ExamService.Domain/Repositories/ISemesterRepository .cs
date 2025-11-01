@@ -13,4 +13,6 @@ public interface ISemesterRepository
     void Add(Semester semester);
 
     void Remove(Semester semester);
+
+    IQueryable<Semester> GetQueryable();
 }
