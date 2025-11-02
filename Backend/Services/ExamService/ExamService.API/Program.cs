@@ -25,12 +25,8 @@ public class Program
                 .AddOData(options =>
                     options
                         .AddRouteComponents("api", ODataConfig.GetEdmModel())
-                        .Select() 
-                        .Filter() 
-                        .OrderBy() 
-                        .Expand() 
-                        .Count()  
-                        .SetMaxTop(100)
+                        .EnableQueryFeatures()
+                        .SetMaxTop(100) 
                 );
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();

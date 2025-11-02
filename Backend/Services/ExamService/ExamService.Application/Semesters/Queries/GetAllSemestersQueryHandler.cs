@@ -1,13 +1,14 @@
 ﻿using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using ExamService.Application.Dtos;
 using ExamService.Domain.Repositories;
 using SharedLibrary.Common.CQRS;
 
 namespace ExamService.Application.Semesters.Queries;
 
-public sealed record GetAllSemestersQuery() : IQuery<List<SemesterDto>>;
+public sealed record GetAllSemestersQuery() : IQuery<IQueryable<SemesterDto>>;
 
-public class GetAllSemestersQueryHandler : IQueryHandler<GetAllSemestersQuery, List<SemesterDto>>
+public class GetAllSemestersQueryHandler : IQueryHandler<GetAllSemestersQuery, IQueryable<SemesterDto>>
 {
     private readonly ISemesterRepository _semesterRepository;
     private readonly IMapper _mapper;
@@ -18,9 +19,11 @@ public class GetAllSemestersQueryHandler : IQueryHandler<GetAllSemestersQuery, L
         _mapper = mapper;
     }
 
-    public async Task<List<SemesterDto>> Handle(GetAllSemestersQuery request, CancellationToken cancellationToken)
+    public Task<IQueryable<SemesterDto>> Handle(GetAllSemestersQuery query, CancellationToken cancellationToken)
     {
-        var semesters = await _semesterRepository.GetAllAsync(cancellationToken);
-        return _mapper.Map<List<SemesterDto>>(semesters);
+        var queryableSemesters = _semesterRepository.GetQueryable();
+        var queryableDto = queryableSemesters.ProjectTo<SemesterDto>(_mapper.ConfigurationProvider);
+
+        return Task.FromResult(queryableDto);
     }
 }
