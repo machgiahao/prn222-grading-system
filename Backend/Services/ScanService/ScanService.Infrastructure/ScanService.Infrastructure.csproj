@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ScanService.Application\ScanService.Application.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+	<PackageReference Include="Minio.AspNetCore" Version="6.0.1" />
+	<PackageReference Include="Qdrant.Client" Version="1.15.1" />
+	<PackageReference Include="SharpCompress" Version="0.41.0" />
+  </ItemGroup>
+
+</Project>

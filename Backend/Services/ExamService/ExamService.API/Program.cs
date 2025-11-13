@@ -2,8 +2,6 @@ using ExamService.Application;
 using ExamService.Infrastructure;
 using Microsoft.AspNetCore.OData;
 using SharedLibrary.Common.Exceptions.Handler;
-using Microsoft.OData.ModelBuilder;
-using Microsoft.OData.Edm;
 using ExamService.API.Configurations;
 
 namespace ExamService.API;

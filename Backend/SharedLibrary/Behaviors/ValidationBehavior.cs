@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
 using MediatR;
-using SharedLibrary.Common.CQRS;
 
 namespace SharedLibrary.Behaviors;
 

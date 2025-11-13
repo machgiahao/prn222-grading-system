@@ -1,4 +1,5 @@
-﻿using ExamService.Application.Dtos;
+﻿using ExamService.API.Commons;
+using ExamService.Application.Dtos;
 using ExamService.Application.Semesters.Commands;
 using ExamService.Application.Semesters.Queries;
 using MediatR;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ExamService.API.Controllers;
 
 [ApiController]
-[Route("api/semester")]
+[Route(ApiRoutes.Semesters.Base)]
 public class SemesterController : ControllerBase
 {
     private readonly IMediator _mediator;

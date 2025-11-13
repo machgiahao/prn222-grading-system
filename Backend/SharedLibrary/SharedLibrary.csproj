@@ -12,5 +12,6 @@
 		<PackageReference Include="MediatR" Version="12.2.0" />
 		<PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.3.0" />
 		<PackageReference Include="Npgsql" Version="8.0.8" />
+		<PackageReference Include="MassTransit.RabbitMQ" Version="8.2.2" />
 	</ItemGroup>
 </Project>

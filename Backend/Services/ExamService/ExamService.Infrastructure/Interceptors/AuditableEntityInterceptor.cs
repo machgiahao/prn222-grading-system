@@ -16,7 +16,6 @@ public class AuditableEntityInterceptor : SaveChangesInterceptor
         _serviceProvider = serviceProvider;
     }
 
-    // (Ghi đè SavingChanges và SavingChangesAsync như cũ)
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
         UpdateEntities(eventData.Context);
@@ -33,7 +32,6 @@ public class AuditableEntityInterceptor : SaveChangesInterceptor
     {
         if (context == null) return;
 
-        // Lấy User ID bằng hàm trợ giúp bên dưới
         string userId = GetCurrentUserId();
         DateTime utcNow = DateTime.UtcNow;
 

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using SharedLibrary.Common.Exceptions;
 
 namespace SharedLibrary.Common.Exceptions.Handler;
 
@@ -22,6 +21,9 @@ public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IE
             ValidationException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
             BadRequestException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
             NotFoundException => (exception.Message, exception.GetType().Name, StatusCodes.Status404NotFound),
+            ConflictException => (exception.Message, exception.GetType().Name, StatusCodes.Status409Conflict),
+            UnauthorizedAccessException => (exception.Message, exception.GetType().Name,
+                StatusCodes.Status401Unauthorized),
             _ => (exception.Message, exception.GetType().Name, StatusCodes.Status500InternalServerError)
         };
 
