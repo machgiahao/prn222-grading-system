@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SharedLibrary.Behaviors;
 using SharedLibrary.Common.Events;
 using SharedLibrary.MassTransit;
+using System.Reflection;
 
 namespace GradingService.Application;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
             cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
         });
+        services.AddAutoMapper(Assembly.GetExecutingAssembly());
         services.AddValidatorsFromAssembly(assembly);
         services.AddAutoMapper(assembly);
         services.AddMessageBroker(configuration, assembly);

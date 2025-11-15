@@ -1,6 +1,7 @@
 ﻿using GradingService.API.Common.Constants;
 using GradingService.API.Dtos;
 using GradingService.Application.Submissions.Commands;
+using GradingService.Application.Submissions.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -89,5 +90,31 @@ public class SubmissionController : ControllerBase
             Message = "Batch auto-assignment completed.",
             AssignedSubmissionCount = assignedCount
         });
+    }
+
+    [HttpGet(ApiRoutes.Submissions.MyTasks)]
+    [Authorize(Roles = SystemRoles.Examiner)]
+    public async Task<IActionResult> GetMyTasks()
+    {
+        var examinerIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!Guid.TryParse(examinerIdString, out Guid examinerId))
+        {
+            throw new UnauthorizedException("User ID claim is missing or invalid in the token.");
+        }
+        var query = new GetMyTasksQuery(examinerId);
+        var result = await _sender.Send(query);
+
+        return Ok(result);
+    }
+
+    [HttpGet(ApiRoutes.Submissions.GradingDetails)]
+    [Authorize(Roles = SystemRoles.Examiner)] 
+    public async Task<IActionResult> GetGradingDetails(Guid id)
+    {
+        var query = new GetGradingDetailsQuery(id);
+        var result = await _sender.Send(query);
+
+        return Ok(result);
     }
 }

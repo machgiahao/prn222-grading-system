@@ -18,4 +18,23 @@ public class SubmissionRepository : Repository<Submission>, ISubmissionRepositor
                  s.Status == SubmissionStatus.ReadyToGrade
         ).ToListAsync(cancellationToken);
     }
+
+    public async Task<Submission> GetSubmissionWithGradingDetailsAsync(Guid submissionId, CancellationToken cancellationToken)
+    {
+        return await _dbSet.Where(s => s.Id == submissionId)
+                .Include(s => s.Batch) 
+                    .ThenInclude(b => b.Exam) 
+                        .ThenInclude(e => e.Rubric)
+                            .ThenInclude(r => r.Items) 
+                .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<List<Submission>> GetAssignedTasksForExaminerAsync(Guid examinerId, CancellationToken cancellationToken)
+    {
+        return await _dbSet
+            .Where(s => s.ExaminerId == examinerId && s.Status == SubmissionStatus.Assigned)
+            .Include(s => s.Batch)
+            .OrderBy(s => s.Batch.Id)
+            .ToListAsync(cancellationToken);
+    }
 }
