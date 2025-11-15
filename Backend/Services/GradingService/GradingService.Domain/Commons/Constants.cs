@@ -14,6 +14,7 @@ public static class SubmissionStatus
     public const string Graded = "Graded";
     public const string Verified = "Verified";
     public const string Flagged = "Flagged";
+    public const string Assigned = "Assigned";
 }
 
 

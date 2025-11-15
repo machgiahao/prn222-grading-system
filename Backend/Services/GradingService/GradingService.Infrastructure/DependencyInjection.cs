@@ -1,4 +1,5 @@
 ﻿using GradingService.Application.Services;
+using GradingService.Domain.Repositories;
 using GradingService.Infrastructure.Context;
 using GradingService.Infrastructure.Interceptors;
 using GradingService.Infrastructure.Repositories;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 
         services.AddDbContext<GradingDbContext>((sp, options) =>
         {

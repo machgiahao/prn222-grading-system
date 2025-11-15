@@ -16,5 +16,4 @@ public class Submission : Entity<Guid>
 
     public virtual ICollection<Violation> Violations { get; set; }
     public virtual ICollection<Grade> Grades { get; set; }
-
 }

@@ -7,8 +7,8 @@ namespace GradingService.Infrastructure.Repositories;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    private readonly GradingDbContext _context;
-    private readonly DbSet<T> _dbSet;
+    protected readonly GradingDbContext _context;
+    protected readonly DbSet<T> _dbSet;
 
     public Repository(GradingDbContext context)
     {

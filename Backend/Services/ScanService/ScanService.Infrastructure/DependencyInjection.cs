@@ -19,6 +19,8 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureService(this IServiceCollection services, IConfiguration configuration)
     {
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
+        // Register Minio service
         services.ConfigureOptions<MinioConfigSetup>();
         services.AddSingleton<IMinioClient>(sp =>
         {
@@ -63,6 +65,12 @@ public static class DependencyInjection
             return new QdrantClient(host, port, https: false);
         });
         services.AddScoped<IVectorRepository, VectorRepository>();
+        services.AddScoped<IScanLogicService, ScanLogicService>();
+
+        // Register services
+        services.AddScoped<IArchiveExtractorService, ArchiveExtractorService>();
+        services.AddScoped<ICodeViolationScanner, CodeViolationScanner>();
+        services.AddScoped<IPlagiarismDetectionService, PlagiarismDetectionService>();
         services.AddScoped<IScanLogicService, ScanLogicService>();
 
         return services;

@@ -48,4 +48,46 @@ public class SubmissionController : ControllerBase
         var batchId = await _sender.Send(command);
         return Accepted(new { PendingBatchId = batchId });
     }
+
+    [HttpPost(ApiRoutes.Submissions.Assign)]
+    [Authorize(Roles = SystemRoles.Manager)]
+    public async Task<IActionResult> AssignSubmission(
+        [FromBody] AssignSubmissionRequestDto request)
+    {
+        if (request.SubmissionId == Guid.Empty || request.ExaminerId == Guid.Empty)
+        {
+            throw new BadRequestException("SubmissionId and ExaminerId are required.");
+        }
+
+        var command = new AssignSubmissionCommand(request.SubmissionId, request.ExaminerId);
+
+        await _sender.Send(command);
+
+        return Ok(new { Message = "Submission assigned successfully." });
+    }
+
+    [HttpPost(ApiRoutes.Submissions.AutoAssign)]
+    [Authorize(Roles = SystemRoles.Manager)]
+    public async Task<IActionResult> AutoAssignBatch(
+        [FromBody] AutoAssignBatchRequestDto request)
+    {
+        if (request.SubmissionBatchId == Guid.Empty)
+        {
+            throw new BadRequestException("SubmissionBatchId is required.");
+        }
+        if (request.ExaminerIds == null || !request.ExaminerIds.Any())
+        {
+            throw new BadRequestException("At least one ExaminerId is required.");
+        }
+
+        var command = new AutoAssignBatchCommand(request.SubmissionBatchId, request.ExaminerIds);
+
+        var assignedCount = await _sender.Send(command);
+
+        return Ok(new
+        {
+            Message = "Batch auto-assignment completed.",
+            AssignedSubmissionCount = assignedCount
+        });
+    }
 }

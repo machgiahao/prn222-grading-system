@@ -1,5 +1,6 @@
 ﻿using GradingService.Domain.Commons;
 using GradingService.Domain.Entities;
+using GradingService.Domain.Repositories;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using SharedLibrary.Common.Repositories;
@@ -21,153 +22,214 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
     public async Task Consume(ConsumeContext<ScanCompletedEvent> context)
     {
         var message = context.Message;
-        _logger.LogInformation($"[GradingService] Received scan results for Batch: {message.SubmissionBatchId}...");
+        _logger.LogInformation("Received scan results for Batch: {BatchId}", message.SubmissionBatchId);
+
+        if (!await ValidateBatchExistsAsync(message.SubmissionBatchId, context.CancellationToken))
+        {
+            return;
+        }
+
+        await CreateSubmissionsAsync(message, context.CancellationToken);
+
+        var hasViolations = message.Violations?.Any() ?? false;
+        if (!hasViolations)
+        {
+            // Update status of submissions that has no violation to ReadyToGrade
+            await HandleCleanBatchAsync(message.SubmissionBatchId, context.CancellationToken);
+            return;
+        }
+
+        await ProcessViolationsAsync(message, context.CancellationToken);
+    }
+
+    private async Task<bool> ValidateBatchExistsAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        var batchRepo = _unitOfWork.Repository<SubmissionBatch>();
+        var batch = await batchRepo.GetByIdAsync(batchId, cancellationToken);
+
+        if (batch == null)
+        {
+            _logger.LogError("SubmissionBatch {BatchId} not found. Cannot process scan results", batchId);
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task CreateSubmissionsAsync(ScanCompletedEvent message, CancellationToken cancellationToken)
+    {
+        if (message.StudentCodes == null || !message.StudentCodes.Any())
+        {
+            _logger.LogWarning("No student codes found for batch {BatchId}", message.SubmissionBatchId);
+            return;
+        }
+
+        _logger.LogInformation("Creating {Count} submissions for batch {BatchId}",
+            message.StudentCodes.Count, message.SubmissionBatchId);
 
         var submissionRepo = _unitOfWork.Repository<Submission>();
-        var violationRepo = _unitOfWork.Repository<Violation>();
-        var batchRepo = _unitOfWork.Repository<SubmissionBatch>();
-
-        // Get the SubmissionBatch to verify it exists
-        var submissionBatch = await batchRepo.GetByIdAsync(message.SubmissionBatchId, context.CancellationToken);
-        if (submissionBatch == null)
+        var submissions = message.StudentCodes.Select(studentCode => new Submission
         {
-            _logger.LogError($"SubmissionBatch {message.SubmissionBatchId} not found. Cannot create submissions.");
-            return;
+            StudentCode = studentCode,
+            SubmissionBatchId = message.SubmissionBatchId,
+            Status = SubmissionStatus.Pending,
+            OriginalFileName = $"{studentCode}/solution.zip"
+        }).ToList();
+
+        await submissionRepo.AddRangeAsync(submissions, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Created {Count} submissions successfully", submissions.Count);
+    }
+
+    private async Task HandleCleanBatchAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("No violations found for batch {BatchId}", batchId);
+
+        var submissionRepo = _unitOfWork.Repository<Submission>();
+        var submissions = (await submissionRepo.FindAsync(
+            s => s.SubmissionBatchId == batchId && s.Status == SubmissionStatus.Pending,
+            cancellationToken
+        )).ToList();
+
+        foreach (var submission in submissions)
+        {
+            submission.Status = SubmissionStatus.ReadyToGrade;
+            submissionRepo.Update(submission);
         }
 
-        // Create submissions for all student codes in the batch
-        _logger.LogInformation($"Creating {message.StudentCodes?.Count ?? 0} submissions...");
+        await UpdateBatchStatusAsync(batchId, BatchStatus.Scanned_Clean, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        if (message.StudentCodes != null && message.StudentCodes.Any())
+        _logger.LogInformation("Updated {Count} submissions to ReadyToGrade", submissions.Count);
+    }
+
+    private async Task ProcessViolationsAsync(ScanCompletedEvent message, CancellationToken cancellationToken)
+    {
+        var hasSystemError = message.Violations.Any(v => v.StudentId == "SYSTEM_ERROR");
+        if (hasSystemError)
         {
-            foreach (var studentCode in message.StudentCodes)
-            {
-                var submission = new Submission
-                {
-                    StudentCode = studentCode,
-                    SubmissionBatchId = message.SubmissionBatchId,
-                    Status = SubmissionStatus.Pending,
-                    OriginalFileName = $"{studentCode}/solution.zip"
-                };
-
-                await submissionRepo.AddAsync(submission, context.CancellationToken);
-            }
-
-            // Save submissions
-            await _unitOfWork.SaveChangesAsync(context.CancellationToken);
-            _logger.LogInformation($"Created {message.StudentCodes.Count} submissions successfully.");
-        }
-
-        // Handle VIOLATIONS
-        if (message.Violations == null || !message.Violations.Any())
-        {
-            _logger.LogInformation($"No violations found for batch {message.SubmissionBatchId}.");
-            await UpdateBatchStatus(message.SubmissionBatchId, BatchStatus.Scanned_Clean, context.CancellationToken);
-            await _unitOfWork.SaveChangesAsync(context.CancellationToken);
-            return;
+            _logger.LogError("System-level error reported for batch {BatchId}", message.SubmissionBatchId);
         }
 
         var violationsByStudent = message.Violations
-            .Where(v => v.StudentId != null && v.StudentId != "SYSTEM_ERROR")
-            .GroupBy(v => v.StudentId);
+            .Where(v => !string.IsNullOrEmpty(v.StudentId) && v.StudentId != "SYSTEM_ERROR")
+            .GroupBy(v => v.StudentId)
+            .ToList();
 
-        _logger.LogInformation($"Found {message.Violations.Count} total violations, grouped into {violationsByStudent.Count()} students.");
+        _logger.LogInformation("Processing {ViolationCount} violations across {StudentCount} students",
+            message.Violations.Count, violationsByStudent.Count);
 
-        int updatedSubmissions = 0;
-        bool hasSystemError = message.Violations.Any(v => v.StudentId == "SYSTEM_ERROR");
+        var updatedCount = await ProcessStudentViolationsAsync(
+            message.SubmissionBatchId,
+            violationsByStudent,
+            cancellationToken);
 
-        if (hasSystemError)
-        {
-            _logger.LogError($"A system-level error was reported by ScanService for batch {message.SubmissionBatchId}.");
-        }
+        await UpdateCleanSubmissionsAsync(message.SubmissionBatchId, cancellationToken);
 
-        // UPDATE SUBMISSIONS + ADD VIOLATIONS
+        var finalStatus = hasSystemError ? BatchStatus.Scanned_Error : BatchStatus.Scanned_Violations;
+        await UpdateBatchStatusAsync(message.SubmissionBatchId, finalStatus, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Finished processing batch {BatchId}. Updated {Count} submissions with violations",
+            message.SubmissionBatchId, updatedCount);
+    }
+
+    private async Task<int> ProcessStudentViolationsAsync(
+        Guid batchId,
+        List<IGrouping<string, ScanResultItem>> violationsByStudent,
+        CancellationToken cancellationToken)
+    {
+        var submissionRepo = _unitOfWork.Repository<Submission>();
+        var violationRepo = _unitOfWork.Repository<Violation>();
+        var updatedCount = 0;
+
         foreach (var studentGroup in violationsByStudent)
         {
             var studentId = studentGroup.Key;
-            var violationCount = studentGroup.Count();
-
-            _logger.LogWarning($"Processing {violationCount} violations for Student: {studentId}.");
 
             try
             {
-                // find the corresponding submission
                 var submission = (await submissionRepo.FindAsync(
-                    s => s.SubmissionBatchId == message.SubmissionBatchId && s.StudentCode == studentId,
-                    context.CancellationToken
+                    s => s.SubmissionBatchId == batchId && s.StudentCode == studentId,
+                    cancellationToken
                 )).FirstOrDefault();
 
-                if (submission != null)
+                if (submission == null)
                 {
-                    // Update submission status to 'Flagged'
-                    submission.Status = SubmissionStatus.Flagged;
-                    submissionRepo.Update(submission);
-
-                    // Add each violation record
-                    foreach (var scanItem in studentGroup)
-                    {
-                        var newViolation = new Violation
-                        {
-                            SubmissionId = submission.Id,
-                            ViolationType = scanItem.ViolationType,
-                            Details = $"{scanItem.Description} (in file: {scanItem.FilePath})"
-                        };
-
-                        await violationRepo.AddAsync(newViolation, context.CancellationToken);
-                    }
-
-                    // Save each student submission's violations
-                    await _unitOfWork.SaveChangesAsync(context.CancellationToken);
-                    updatedSubmissions++;
-
-                    _logger.LogInformation($"Successfully saved {violationCount} violations for Student: {studentId}");
+                    _logger.LogWarning("Submission not found for student {StudentId} in batch {BatchId}", studentId, batchId);
+                    continue;
                 }
-                else
+
+                submission.Status = SubmissionStatus.Flagged;
+                submissionRepo.Update(submission);
+
+                var violations = studentGroup.Select(v => new Violation
                 {
-                    _logger.LogError($"Could not find Submission entry for StudentId {studentId} in Batch {message.SubmissionBatchId}");
-                }
+                    SubmissionId = submission.Id,
+                    ViolationType = v.ViolationType,
+                    Details = $"{v.Description} (in file: {v.FilePath})"
+                }).ToList();
+
+                await violationRepo.AddRangeAsync(violations, cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                updatedCount++;
+                _logger.LogInformation("Saved {Count} violations for student {StudentId}",
+                    violations.Count, studentId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to save violations for StudentId {studentId} in Batch {message.SubmissionBatchId}. Continuing with others...");
+                _logger.LogError(ex, "Failed to save violations for student {StudentId} in batch {BatchId}",
+                    studentId, batchId);
             }
         }
 
-        // UPDATE BATCH STATUS
-        try
-        {
-            var finalBatchStatus = hasSystemError ? BatchStatus.Scanned_Error : BatchStatus.Scanned_Violations;
-            await UpdateBatchStatus(message.SubmissionBatchId, finalBatchStatus, context.CancellationToken);
-            await _unitOfWork.SaveChangesAsync(context.CancellationToken);
-
-            _logger.LogInformation($"[GradingService] Finished processing batch {message.SubmissionBatchId}. Updated {updatedSubmissions} submissions with violations.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to save final batch status for {message.SubmissionBatchId}.");
-        }
+        return updatedCount;
     }
 
-    private async Task UpdateBatchStatus(Guid batchId, string status, CancellationToken cancellationToken)
+    private async Task UpdateCleanSubmissionsAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        var submissionRepo = _unitOfWork.Repository<Submission>();
+        var cleanSubmissions = (await submissionRepo.FindAsync(
+            s => s.SubmissionBatchId == batchId && s.Status == SubmissionStatus.Pending,
+            cancellationToken
+        )).ToList();
+
+        if (!cleanSubmissions.Any())
+        {
+            return;
+        }
+
+        foreach (var submission in cleanSubmissions)
+        {
+            submission.Status = SubmissionStatus.ReadyToGrade;
+            submissionRepo.Update(submission);
+        }
+
+        _logger.LogInformation("Updated {Count} clean submissions to ReadyToGrade", cleanSubmissions.Count);
+    }
+
+    private async Task UpdateBatchStatusAsync(Guid batchId, string status, CancellationToken cancellationToken)
     {
         try
         {
             var batchRepo = _unitOfWork.Repository<SubmissionBatch>();
-
             var batch = await batchRepo.GetByIdAsync(batchId, cancellationToken);
-            if (batch != null)
+
+            if (batch == null)
             {
-                batch.Status = status;
-                batchRepo.Update(batch);
+                _logger.LogError("SubmissionBatch {BatchId} not found for status update", batchId);
+                return;
             }
-            else
-            {
-                _logger.LogError($"Could not find SubmissionBatch {batchId} to update status.");
-            }
+
+            batch.Status = status;
+            batchRepo.Update(batch);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to update status for SubmissionBatch {batchId}.");
+            _logger.LogError(ex, "Failed to update status for batch {BatchId}", batchId);
         }
     }
+
 }
