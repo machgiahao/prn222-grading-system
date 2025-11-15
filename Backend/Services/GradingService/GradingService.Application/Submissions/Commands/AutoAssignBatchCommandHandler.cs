@@ -14,7 +14,7 @@ public sealed record AutoAssignBatchCommand(
 
 public class AutoAssignBatchCommandHandler : ICommandHandler<AutoAssignBatchCommand, int>
 {
-    private IUnitOfWork _unitOfWork;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ISubmissionRepository _submissionRepo;
     private readonly IUserRepository _userRepo;
 

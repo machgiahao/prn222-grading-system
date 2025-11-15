@@ -9,29 +9,21 @@ namespace SharedLibrary.Common.Exceptions.Handler;
 public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception,
-        CancellationToken cancellationToken)
+    CancellationToken cancellationToken)
     {
         logger.LogError(
-            "Error Message: {exceptionMessage}, Time of occurrence: {time}", exception.Message, DateTime.UtcNow);
+            "Error: {Exception} - Message: {Message} - Time: {Time}",
+            exception.GetType().Name,
+            exception.Message,
+            DateTime.UtcNow);
 
-        (string Detail, string Title, int StatusCode) details = exception switch
-        {
-            InternalServerException => (exception.Message, exception.GetType().Name,
-                StatusCodes.Status500InternalServerError),
-            ValidationException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
-            BadRequestException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
-            NotFoundException => (exception.Message, exception.GetType().Name, StatusCodes.Status404NotFound),
-            ConflictException => (exception.Message, exception.GetType().Name, StatusCodes.Status409Conflict),
-            UnauthorizedAccessException => (exception.Message, exception.GetType().Name,
-                StatusCodes.Status401Unauthorized),
-            _ => (exception.Message, exception.GetType().Name, StatusCodes.Status500InternalServerError)
-        };
+        var (detail, title, statusCode) = MapExceptionToResponse(exception);
 
         var problemDetails = new ProblemDetails
         {
-            Title = details.Title,
-            Detail = details.Detail,
-            Status = details.StatusCode,
+            Title = title,
+            Detail = detail,
+            Status = statusCode,
             Instance = context.Request.Path
         };
 
@@ -44,5 +36,30 @@ public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IE
 
         await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken: cancellationToken);
         return true;
+    }
+
+    private static (string Detail, string Title, int StatusCode) MapExceptionToResponse(Exception exception)
+    {
+        return exception switch
+        {
+            // 400 Bad Request
+            ValidationException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
+            BadRequestException => (exception.Message, exception.GetType().Name, StatusCodes.Status400BadRequest),
+
+            // 401 Unauthorized
+            UnauthorizedException => (exception.Message, exception.GetType().Name, StatusCodes.Status401Unauthorized),
+
+            // 404 Not Found
+            NotFoundException => (exception.Message, exception.GetType().Name, StatusCodes.Status404NotFound),
+
+            // 409 Conflict
+            ConflictException => (exception.Message, exception.GetType().Name, StatusCodes.Status409Conflict),
+
+            // 500 Internal Server Error
+            InternalServerException => (exception.Message, exception.GetType().Name, StatusCodes.Status500InternalServerError),
+
+            // Default
+            _ => (exception.Message, exception.GetType().Name, StatusCodes.Status500InternalServerError)
+        };
     }
 }
