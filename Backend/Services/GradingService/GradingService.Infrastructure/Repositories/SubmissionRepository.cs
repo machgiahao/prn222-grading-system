@@ -37,4 +37,22 @@ public class SubmissionRepository : Repository<Submission>, ISubmissionRepositor
             .OrderBy(s => s.Batch.Id)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<List<Submission>> GetModerationQueueAsync(CancellationToken cancellationToken)
+    {
+        return await _dbSet
+            .Where(s => s.Status == SubmissionStatus.Flagged)
+            .Include(s => s.Batch)
+            .Include(s => s.Violations)
+            .OrderBy(s => s.Batch.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Submission?> GetByIdWithViolationsAsync(Guid submissionId, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Where(s => s.Id == submissionId)
+            .Include(s => s.Violations)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 }

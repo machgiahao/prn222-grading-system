@@ -3,6 +3,7 @@ using IdentityService.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SharedLibrary.Common.Exceptions.Handler;
+using SharedLibrary.Common.Services;
 using System.Text;
 
 namespace IdentityService.API
@@ -32,6 +33,9 @@ namespace IdentityService.API
             builder.Services
                 .AddApplicationService(configuration)
                 .AddInfrastructureService(configuration);
+
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             builder.Services.AddExceptionHandler<CustomExceptionHandler>();
             builder.Services.AddProblemDetails();

@@ -3,12 +3,15 @@ using ExamService.Application.Dtos;
 using ExamService.Application.Semesters.Commands;
 using ExamService.Application.Semesters.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SharedLibrary.Common.Constants;
 
 namespace ExamService.API.Controllers;
 
 [ApiController]
 [Route(ApiRoutes.Semesters.Base)]
+[Authorize(Roles = SystemRoles.Admin)]
 public class SemesterController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -25,7 +28,7 @@ public class SemesterController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet(ApiRoutes.Semesters.GetById)]
     public async Task<ActionResult<SemesterDto>> GetSemesterById(Guid id)
     {
         var query = new GetSemesterByIdQuery(id);
@@ -43,7 +46,7 @@ public class SemesterController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut(ApiRoutes.Semesters.Update)]
     public async Task<IActionResult> UpdateSemester(Guid id, [FromBody] UpdateSemesterCommand command)
     {
         var updateCommand = command with { Id = id };
@@ -52,7 +55,7 @@ public class SemesterController : ControllerBase
         return Ok(result);
     }
 
-    [HttpDelete("{id:guid}")]
+    [HttpDelete(ApiRoutes.Semesters.Delete)]
     public async Task<IActionResult> DeleteSemester(Guid id)
     {
         var command = new DeleteSemesterCommand(id);

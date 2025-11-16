@@ -14,5 +14,10 @@ public class ViolationConfiguration : IEntityTypeConfiguration<Violation>
         builder.Property(x => x.ViolationType).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Details).IsRequired(false);
         builder.Property(x => x.SimilarityScore).IsRequired(false);
+
+        builder.Property(x => x.ModeratorComment).IsRequired(false).HasMaxLength(1000);
+        builder.Property(x => x.IsVerified).IsRequired(false);
+        builder.Property(x => x.VerifiedBy).IsRequired(false);
+        builder.Property(x => x.VerifiedAt).IsRequired(false);
     }
 }

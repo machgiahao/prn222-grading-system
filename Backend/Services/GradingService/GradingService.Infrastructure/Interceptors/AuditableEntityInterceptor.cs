@@ -1,9 +1,8 @@
 ﻿using GradingService.Domain.Abstractions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
+using SharedLibrary.Common.Services;
 
 namespace GradingService.Infrastructure.Interceptors;
 
@@ -53,17 +52,8 @@ public class AuditableEntityInterceptor : SaveChangesInterceptor
 
     private string GetCurrentUserId()
     {
-        using (var scope = _serviceProvider.CreateScope())
-        {
-            var httpContextAccessor = scope.ServiceProvider
-                .GetService<IHttpContextAccessor>();
-
-            var userId = httpContextAccessor?
-                .HttpContext?
-                .User?
-                .FindFirstValue(ClaimTypes.NameIdentifier);
-
-            return userId ?? "system";
-        }
+        using var scope = _serviceProvider.CreateScope();
+        var currentUserService = scope.ServiceProvider.GetService<ICurrentUserService>();
+        return currentUserService?.GetUserIdOrDefault() ?? "system";
     }
 }

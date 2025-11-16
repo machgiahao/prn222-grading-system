@@ -19,5 +19,18 @@ public class GradeConfiguration : IEntityTypeConfiguration<Grade>
             .WithOne(gi => gi.Grade)
             .HasForeignKey(gi => gi.GradeId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(g => g.Submission)
+               .WithMany(s => s.Grades) 
+               .HasForeignKey(g => g.SubmissionId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(g => g.Examiner)
+               .WithMany(u => u.Grades) 
+               .HasForeignKey(g => g.ExaminerId)
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(g => g.SubmissionId);
+        builder.HasIndex(g => g.ExaminerId);
     }
 }

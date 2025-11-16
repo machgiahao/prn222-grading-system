@@ -10,7 +10,14 @@ public class GradedRubricItemConfiguration : IEntityTypeConfiguration<GradedRubr
     {
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedOnAdd();
-
         builder.Property(x => x.Score).IsRequired();
+
+        builder.HasOne(gi => gi.RubricItem)
+               .WithMany(ri => ri.GradedItems)
+               .HasForeignKey(gi => gi.RubricItemId)
+               .OnDelete(DeleteBehavior.Restrict); 
+
+        builder.HasIndex(gi => gi.GradeId);
+        builder.HasIndex(gi => gi.RubricItemId);
     }
 }
