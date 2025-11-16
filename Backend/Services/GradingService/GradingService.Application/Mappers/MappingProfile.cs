@@ -15,5 +15,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.RubricItems, opt => opt.MapFrom(src =>
                 src.Batch.Exam.Rubric.Items
             ));
+
+        CreateMap<Submission, ModerationTaskDto>()
+            .ForMember(dest => dest.ViolationCount, opt => opt.MapFrom(src =>
+                src.Violations != null ? src.Violations.Count : 0
+            ));
     }
 }

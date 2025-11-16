@@ -1,4 +1,19 @@
 services:
+  # PostgreSQL Service
+  postgres:
+    image: postgres:17
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Prn222GradingSystem
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+    - grading-system-network
+    
   # RabbitMQ Service      
   rabbitmq:
     image: rabbitmq:3-management
@@ -61,3 +76,4 @@ volumes:
   rabbitmq-data:
   minio-data:
   qdrant-data:
+  pg-data:  

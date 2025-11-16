@@ -18,5 +18,13 @@ public static class ApiRoutes
         public const string AutoAssign = "auto-assign";
         public const string MyTasks = "my-tasks";
         public const string GradingDetails = "{id}/grading-details";
+        public const string ModerationQueue = "moderation-queue";
+        public const string VerifyViolation = "verify-violation";
+    }
+
+    public static class Grades
+    {
+        public const string Base = ApiRoutes.Base + "/grades";
+
     }
 }

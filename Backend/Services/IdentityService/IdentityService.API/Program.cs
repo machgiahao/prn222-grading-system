@@ -1,8 +1,11 @@
 using IdentityService.Application;
 using IdentityService.Infrastructure;
+using IdentityService.Infrastructure.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SharedLibrary.Common.Exceptions.Handler;
+using SharedLibrary.Common.Extensions;
+using SharedLibrary.Common.Services;
 using System.Text;
 
 namespace IdentityService.API
@@ -33,6 +36,9 @@ namespace IdentityService.API
                 .AddApplicationService(configuration)
                 .AddInfrastructureService(configuration);
 
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
             builder.Services.AddExceptionHandler<CustomExceptionHandler>();
             builder.Services.AddProblemDetails();
             builder.Services.AddHttpContextAccessor();
@@ -62,6 +68,7 @@ namespace IdentityService.API
 
             builder.Services.AddAuthorization();
             var app = builder.Build();
+            app.ApplyMigrations<IdentityDbContext>();
             app.UseCors(policy =>
                 policy.WithOrigins("*")
                     .AllowAnyHeader()

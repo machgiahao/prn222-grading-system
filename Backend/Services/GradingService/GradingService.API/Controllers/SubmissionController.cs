@@ -117,4 +117,37 @@ public class SubmissionController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet(ApiRoutes.Submissions.ModerationQueue)]
+    [Authorize(Roles = SystemRoles.Moderator)]
+    public async Task<IActionResult> GetModerationQueue()
+    {
+        var query = new GetModerationQueueQuery();
+        var result = await _sender.Send(query);
+
+        return Ok(result);
+    }
+
+    [HttpPost("verify-violation")]
+    [Authorize(Roles = SystemRoles.Moderator)]
+    public async Task<IActionResult> VerifyViolation(
+    [FromBody] VerifyViolationRequestDto request)
+    {
+        var moderatorIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(moderatorIdString, out Guid moderatorId))
+        {
+            throw new UnauthorizedAccessException("Moderator ID claim is missing or invalid.");
+        }
+
+        var command = new VerifyViolationCommand(
+            request.SubmissionId,
+            request.IsViolationConfirmed,
+            request.ModeratorComment,
+            moderatorId
+        );
+
+        await _sender.Send(command);
+
+        return Ok(new { Message = "Violation verification processed." });
+    }
 }

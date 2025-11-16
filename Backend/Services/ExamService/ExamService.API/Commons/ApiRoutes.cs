@@ -10,6 +10,8 @@ public static class ApiRoutes
     {
         public const string Base = ApiRoutes.Base + "/semester";
         public const string GetById = "{id}";
+        public const string Update = "{id}";
+        public const string Delete = "{id}";
     }
 
     public static class Subjects
