@@ -1,6 +1,7 @@
 
 using GradingService.Application;
 using GradingService.Infrastructure;
+using GradingService.Infrastructure.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -95,6 +96,7 @@ public class Program
         builder.Services.AddAuthorization();
 
         var app = builder.Build();
+        app.ApplyMigrations<GradingDbContext>();
         app.UseCors(policy =>
             policy.WithOrigins("*")
                 .AllowAnyHeader()

@@ -1,6 +1,7 @@
 using ExamService.API.Configurations;
 using ExamService.Application;
 using ExamService.Infrastructure;
+using ExamService.Infrastructure.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OData;
 using Microsoft.IdentityModel.Tokens;
@@ -102,6 +103,7 @@ public class Program
         builder.Services.AddAuthorization();
 
         var app = builder.Build();
+        app.ApplyMigrations<ExamDbContext>();
         app.UseCors(policy =>
             policy.WithOrigins("*")
                 .AllowAnyHeader()
