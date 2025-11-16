@@ -8,15 +8,16 @@ public class SemesterConfiguration : IEntityTypeConfiguration<Semester>
 {
     public void Configure(EntityTypeBuilder<Semester> builder)
     {
-        builder.HasKey(s => s.Id);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedOnAdd();
 
-        builder.Property(s => s.SemesterCode)
-            .IsRequired()
-            .HasMaxLength(50);
+        builder.Property(x => x.SemesterName).IsRequired().HasMaxLength(100);
 
-        builder.HasIndex(s => s.SemesterCode).IsUnique();
+        builder.HasIndex(x => x.SemesterName).IsUnique();
 
-        builder.Property(s => s.SemesterName)
-            .IsRequired();
+        builder.HasMany(s => s.Exams)
+            .WithOne(e => e.Semester)
+            .HasForeignKey(e => e.SemesterId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

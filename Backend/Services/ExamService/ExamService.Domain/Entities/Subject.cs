@@ -6,4 +6,6 @@ public class Subject : Entity<Guid>
 {
     public string SubjectCode { get; set; }
     public string SubjectName { get; set; }
+
+    public virtual ICollection<Exam> Exams { get; set; } = new List<Exam>();
 }
