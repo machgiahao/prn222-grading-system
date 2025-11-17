@@ -8,73 +8,68 @@ using SharedLibrary.Common.Extensions;
 using SharedLibrary.Common.Services;
 using System.Text;
 
-namespace IdentityService.API
+namespace IdentityService.API;
+
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+        var configuration = builder.Configuration;
+
+        builder.Services
+            .AddApplicationService(configuration)
+            .AddInfrastructureService(configuration);
+
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        builder.Services.AddExceptionHandler<CustomExceptionHandler>();
+        builder.Services.AddProblemDetails();
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+
+        builder.Services.AddAuthentication(options =>
         {
-            var builder = WebApplication.CreateBuilder(args);
-            var configuration = builder.Configuration;
-
-            builder.Services
-                .AddApplicationService(configuration)
-                .AddInfrastructureService(configuration);
-
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
-            builder.Services.AddExceptionHandler<CustomExceptionHandler>();
-            builder.Services.AddProblemDetails();
-            builder.Services.AddHttpContextAccessor();
-            builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-            builder.Services
-                .AddAuthentication(options =>
-                {
-                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                })
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = configuration["JwtSettings:Issuer"],
-                        ValidAudience = configuration["JwtSettings:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!))
-                    };
-                });
-
-            builder.Services.AddAuthorization();
-            builder.Services.AddHealthChecks();
-
-            var app = builder.Build();
-            app.ApplyMigrations<IdentityDbContext>();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
-            app.UseCors("AllowSpecificOrigins");
-            app.UseHttpsRedirection();
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = configuration["JwtSettings:Issuer"],
+                ValidAudience = configuration["JwtSettings:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!))
+            };
+        });
 
-            app.UseAuthentication();
-            app.UseAuthorization();
+        builder.Services.AddAuthorization();
+        builder.Services.AddHealthChecks();
 
-            app.UseExceptionHandler(options => { });
+        var app = builder.Build();
+        app.ApplyMigrations<IdentityDbContext>();
 
-            app.MapControllers();
-
-            app.MapHealthChecks("/health");
-            app.Run();
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
+
+        app.UseHttpsRedirection();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseExceptionHandler(options => { });
+
+        app.MapControllers();
+        app.MapHealthChecks("/health");
+
+        app.Run();
     }
 }

@@ -19,13 +19,13 @@ public class Program
             options.AddPolicy("AllowLocalhost", policy =>
             {
                 policy.WithOrigins(
-                        "http://localhost:3000",      // Next.js default
-                        "http://localhost:3001",      // Next.js alternative
-                        "http://localhost:5173"      // Vite
+                        "http://localhost:3000",
+                        "http://localhost:3001",
+                        "http://localhost:5173"
                     )
                     .AllowAnyMethod()
                     .AllowAnyHeader()
-                    .AllowCredentials(); 
+                    .AllowCredentials();
             });
         });
 
@@ -45,7 +45,6 @@ public class Program
                         Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!))
                 };
 
-                // Cho phép token từ query string (WebSocket support)
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
@@ -72,10 +71,9 @@ public class Program
             options.EnableForHttps = true;
         });
 
-        //  Rate Limiting
+        // Rate Limiting
         builder.Services.AddRateLimiter(options =>
         {
-            // Auth endpoints
             options.AddFixedWindowLimiter("auth", opt =>
             {
                 opt.PermitLimit = 10;
@@ -83,14 +81,12 @@ public class Program
                 opt.QueueLimit = 0;
             });
 
-            // Protected endpoints
             options.AddFixedWindowLimiter("api", opt =>
             {
                 opt.PermitLimit = 100;
                 opt.Window = TimeSpan.FromMinutes(1);
             });
 
-            // File uploads
             options.AddFixedWindowLimiter("upload", opt =>
             {
                 opt.PermitLimit = 5;
@@ -104,23 +100,22 @@ public class Program
             .AddUrlGroup(new Uri("https://localhost:7001/health"), "ExamService")
             .AddUrlGroup(new Uri("https://localhost:7002/health"), "GradingService");
 
+        builder.Services.AddControllers();
+
+        // Add HttpClient for Swagger proxying
+        builder.Services.AddHttpClient();
+
         // SWAGGER
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "API Gateway - Grading System",
+                Title = "API Gateway - All Services",
                 Version = "v1",
-                Description = "Unified API Gateway for Exam Grading System with JWT Authentication",
-                Contact = new OpenApiContact
-                {
-                    Name = "Your Team",
-                    Email = "your@email.com"
-                }
+                Description = "Centralized API Gateway for Grading System Microservices"
             });
 
-            // JWT Bearer Authentication
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
@@ -128,7 +123,7 @@ public class Program
                 Scheme = "Bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
-                Description = @"JWT Authorization header using the Bearer scheme. Enter your token in the text input below. Example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'"
+                Description = "Enter JWT token from /api/v1/auth/login"
             });
 
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -145,21 +140,6 @@ public class Program
                     Array.Empty<string>()
                 }
             });
-            c.TagActionsBy(api =>
-            {
-                var path = api.RelativePath ?? "";
-
-                if (path.Contains("/auth/")) return new[] { "Authentication" };
-                if (path.Contains("/subject")) return new[] { "Subjects" };
-                if (path.Contains("/semester")) return new[] { "Semesters" };
-                if (path.Contains("/rubric")) return new[] { "Rubrics" };
-                if (path.Contains("/submission")) return new[] { "Submissions" };
-                if (path.Contains("/grade")) return new[] { "Grades" };
-                if (path.Contains("/report")) return new[] { "Reports" };
-                if (path.Contains("/health")) return new[] { "Health" };
-
-                return new[] { "Other" };
-            });
         });
 
         // ===== YARP Reverse Proxy =====
@@ -167,7 +147,6 @@ public class Program
             .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
             .AddTransforms(builderContext =>
             {
-                // Forward Authorization header
                 builderContext.AddRequestTransform(transformContext =>
                 {
                     var authHeader = transformContext.HttpContext.Request.Headers.Authorization;
@@ -179,7 +158,6 @@ public class Program
                     return ValueTask.CompletedTask;
                 });
 
-                // Add X-Forwarded headers
                 builderContext.AddRequestTransform(transformContext =>
                 {
                     var request = transformContext.HttpContext.Request;
@@ -199,23 +177,87 @@ public class Program
         {
             app.UseDeveloperExceptionPage();
 
+            // ===== Swagger Proxy Endpoints =====
+            app.MapGet("/swagger-proxy/identity", async (IHttpClientFactory httpClientFactory) =>
+            {
+                var client = httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+                try
+                {
+                    var response = await client.GetStringAsync("https://localhost:7000/swagger/v1/swagger.json");
+                    return Results.Content(response, "application/json");
+                }
+                catch (HttpRequestException ex)
+                {
+                    return Results.Problem($"Cannot reach Identity Service: {ex.Message}", statusCode: 503);
+                }
+                catch (Exception ex)
+                {
+                    return Results.Problem($"Failed to fetch Identity Service Swagger: {ex.Message}");
+                }
+            }).ExcludeFromDescription();
+
+            app.MapGet("/swagger-proxy/exam", async (IHttpClientFactory httpClientFactory) =>
+            {
+                var client = httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+                try
+                {
+                    var response = await client.GetStringAsync("https://localhost:7001/swagger/v1/swagger.json");
+                    return Results.Content(response, "application/json");
+                }
+                catch (HttpRequestException ex)
+                {
+                    return Results.Problem($"Cannot reach Exam Service: {ex.Message}", statusCode: 503);
+                }
+                catch (Exception ex)
+                {
+                    return Results.Problem($"Failed to fetch Exam Service Swagger: {ex.Message}");
+                }
+            }).ExcludeFromDescription();
+
+            app.MapGet("/swagger-proxy/grading", async (IHttpClientFactory httpClientFactory) =>
+            {
+                var client = httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+                try
+                {
+                    var response = await client.GetStringAsync("https://localhost:7002/swagger/v1/swagger.json");
+                    return Results.Content(response, "application/json");
+                }
+                catch (HttpRequestException ex)
+                {
+                    return Results.Problem($"Cannot reach Grading Service: {ex.Message}", statusCode: 503);
+                }
+                catch (Exception ex)
+                {
+                    return Results.Problem($"Failed to fetch Grading Service Swagger: {ex.Message}");
+                }
+            }).ExcludeFromDescription();
+
             // SWAGGER UI
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Gateway v1");
-                c.RoutePrefix = "swagger";  // URL: https://localhost:5001/swagger
-                c.DocumentTitle = "API Gateway - Grading System";
+                // Gateway's own endpoints (default)
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "🌐 Gateway API");
 
-                // Enable deep linking
+                // Backend services via proxy endpoints
+                c.SwaggerEndpoint("/swagger-proxy/identity", "🔐 Identity Service");
+                c.SwaggerEndpoint("/swagger-proxy/exam", "📝 Exam Service");
+                c.SwaggerEndpoint("/swagger-proxy/grading", "📊 Grading Service");
+
+                c.RoutePrefix = "swagger";
+                c.DocumentTitle = "API Gateway - All Services";
                 c.EnableDeepLinking();
-
-                // Enable filter
                 c.EnableFilter();
-
-                // Enable try it out by default
-                c.EnableTryItOutByDefault();
+                c.DisplayRequestDuration();
+                c.DefaultModelsExpandDepth(-1);
+                c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
             });
+
+            // Redirect root to Swagger
+            app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
         }
         else
         {
@@ -223,7 +265,9 @@ public class Program
             app.UseHsts();
         }
 
-        // 2. Request/Response Logging
+        app.MapGet("/error", () => Results.Problem("An error occurred."));
+
+        // Request/Response Logging
         app.Use(async (context, next) =>
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
@@ -257,22 +301,16 @@ public class Program
             );
         });
 
-        // 3. Response Compression
         app.UseResponseCompression();
-
-        // 4. HTTPS Redirection
         app.UseHttpsRedirection();
-
-        // 5. CORS
         app.UseCors("AllowLocalhost");
 
         app.UseRateLimiter();
-
         app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapHealthChecks("/health");
-
+        app.MapControllers();
         app.MapReverseProxy();
 
         app.Run();

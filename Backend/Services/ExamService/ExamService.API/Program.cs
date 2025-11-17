@@ -18,35 +18,35 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        var configuration = builder.Configuration;
 
         builder.Services
-            .AddApplicationService(configuration)
-            .AddInfrastructureService(configuration);
+            .AddApplicationService(builder.Configuration)
+            .AddInfrastructureService(builder.Configuration);
 
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-        .AddJwtBearer(o =>
+        .AddJwtBearer(options =>
         {
-            o.TokenValidationParameters = new TokenValidationParameters
+            options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
                 ValidAudience = builder.Configuration["JwtSettings:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey
-                (Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"])),
-
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!)),
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true
             };
         });
+
         builder.Services.AddControllers()
             .AddOData(options =>
                 options
@@ -54,13 +54,14 @@ public class Program
                     .EnableQueryFeatures()
                     .SetMaxTop(100)
             );
+
         builder.Services.AddExceptionHandler<CustomExceptionHandler>();
         builder.Services.AddProblemDetails();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo { Title = "ExamService API", Version = "v1" });
+            c.SwaggerDoc("v1", new OpenApiInfo { Title = "Exam Service API", Version = "v1" });
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
@@ -68,7 +69,7 @@ public class Program
                 Scheme = "Bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
-                Description = "JWT Authorization header. Enter 'Bearer' [space] and paste your token here.\n\nFor example: \"Bearer eyJhbGciOiJ...\""
+                Description = "JWT Authorization header. Enter 'Bearer' [space] and paste your token."
             });
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
@@ -81,31 +82,32 @@ public class Program
                             Id = "Bearer"
                         }
                     },
-                    new string[] {}
+                    Array.Empty<string>()
                 }
             });
         });
+
         builder.Services.AddAuthorization();
         builder.Services.AddHealthChecks();
 
         var app = builder.Build();
-
         app.ApplyMigrations<ExamDbContext>();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
-        app.UseHttpsRedirection();
 
+        app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseUserContext();
         app.UseExceptionHandler(options => { });
+
         app.MapControllers();
         app.MapHealthChecks("/health");
 
         app.Run();
     }
 }
-
