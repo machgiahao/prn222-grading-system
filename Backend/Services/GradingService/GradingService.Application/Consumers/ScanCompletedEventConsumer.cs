@@ -68,12 +68,21 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
             message.StudentCodes.Count, message.SubmissionBatchId);
 
         var submissionRepo = _unitOfWork.Repository<Submission>();
-        var submissions = message.StudentCodes.Select(studentCode => new Submission
+        var submissions = message.StudentCodes.Select(studentCode =>
         {
-            StudentCode = studentCode,
-            SubmissionBatchId = message.SubmissionBatchId,
-            Status = SubmissionStatus.Pending,
-            OriginalFileName = $"{studentCode}/solution.zip"
+            // Get folder name from dictionary, fallback to studentCode if not found
+            var folderName = message.StudentFolders?.ContainsKey(studentCode) == true
+                ? message.StudentFolders[studentCode]
+                : studentCode;
+
+            return new Submission
+            {
+                StudentCode = studentCode,
+                FolderName = folderName,
+                SubmissionBatchId = message.SubmissionBatchId,
+                Status = SubmissionStatus.Pending,
+                OriginalFileName = $"{folderName}/solution.zip"
+            };
         }).ToList();
 
         await submissionRepo.AddRangeAsync(submissions, cancellationToken);
@@ -175,8 +184,8 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 updatedCount++;
-                _logger.LogInformation("Saved {Count} violations for student {StudentId}",
-                    violations.Count, studentId);
+                _logger.LogInformation("Saved {Count} violations for student {StudentId} (Folder: {FolderName})",
+                    violations.Count, studentId, submission.FolderName);
             }
             catch (Exception ex)
             {
@@ -231,5 +240,4 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
             _logger.LogError(ex, "Failed to update status for batch {BatchId}", batchId);
         }
     }
-
 }

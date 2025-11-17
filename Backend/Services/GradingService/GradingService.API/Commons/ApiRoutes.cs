@@ -27,4 +27,10 @@ public static class ApiRoutes
         public const string Base = ApiRoutes.Base + "/grades";
 
     }
+
+    public static class Reports
+    {
+        public const string Base = ApiRoutes.Base + "/reports";
+        public const string ExportBatchReport = "export/batch/{batchId}";
+    }
 }

@@ -17,21 +17,6 @@ namespace IdentityService.API
             var builder = WebApplication.CreateBuilder(args);
             var configuration = builder.Configuration;
 
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy("AllowSpecificOrigins",
-                    policy =>
-                    {
-                        policy.WithOrigins(
-                                "http://localhost:5000",
-                                "https://localhost:7000"
-                            )
-                            .AllowAnyHeader()
-                            .AllowAnyMethod()
-                            .AllowCredentials();
-                    });
-            });
-
             builder.Services
                 .AddApplicationService(configuration)
                 .AddInfrastructureService(configuration);
@@ -67,13 +52,11 @@ namespace IdentityService.API
                 });
 
             builder.Services.AddAuthorization();
+            builder.Services.AddHealthChecks();
+
             var app = builder.Build();
             app.ApplyMigrations<IdentityDbContext>();
-            app.UseCors(policy =>
-                policy.WithOrigins("*")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-            );
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
@@ -90,6 +73,7 @@ namespace IdentityService.API
 
             app.MapControllers();
 
+            app.MapHealthChecks("/health");
             app.Run();
         }
     }

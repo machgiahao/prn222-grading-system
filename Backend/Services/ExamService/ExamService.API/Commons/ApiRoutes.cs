@@ -18,6 +18,8 @@ public static class ApiRoutes
     {
         public const string Base = ApiRoutes.Base + "/subject";
         public const string GetById = "{id}";
+        public const string Update = "{id}";
+        public const string Delete = "{id}";
     }
 
     public static class Rubrics

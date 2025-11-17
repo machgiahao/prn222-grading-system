@@ -1,4 +1,5 @@
-﻿using ExamService.Application.Dtos;
+﻿using ExamService.API.Commons;
+using ExamService.Application.Dtos;
 using ExamService.Application.Subjects.Commands;
 using ExamService.Application.Subjects.Queries;
 using MediatR;
@@ -9,12 +10,11 @@ using Microsoft.AspNetCore.OData.Routing.Controllers;
 namespace ExamService.API.Controllers;
 
 [ApiController]
-[Route("api/subjects")] 
+[Route(ApiRoutes.Subjects.Base)] 
 public class SubjectController : ODataController
 {
     private readonly IMediator _mediator;
 
-    // Tiêm (inject) MediatR
     public SubjectController(IMediator mediator)
     {
         _mediator = mediator;
@@ -27,7 +27,7 @@ public class SubjectController : ODataController
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet(ApiRoutes.Subjects.GetById)]
     [EnableQuery]
     public async Task<ActionResult<SubjectDto>> GetSubjectById(Guid id)
     {
@@ -45,7 +45,7 @@ public class SubjectController : ODataController
         return result;
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut(ApiRoutes.Subjects.Update)]
     public async Task<IActionResult> UpdateSubject(Guid id, [FromBody] UpdateSubjectCommand command)
     {
         if (id != command.Id)
@@ -57,7 +57,7 @@ public class SubjectController : ODataController
         return Ok(result);
     }
 
-    [HttpDelete("{id:guid}")]
+    [HttpDelete(ApiRoutes.Subjects.Delete)]
     public async Task<IActionResult> DeleteSubject(Guid id)
     {
         var command = new DeleteSubjectCommand(id);

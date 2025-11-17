@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using ScanService.Application.Services;
 using SharpCompress.Archives;
+using System.Text.RegularExpressions;
 
 namespace ScanService.Infrastructure.Services;
 
@@ -8,6 +9,7 @@ public class ArchiveExtractorService : IArchiveExtractorService
 {
     private readonly ILogger<ArchiveExtractorService> _logger;
     private static readonly string[] JunkPaths = { ".vs/", "/bin/", "/obj/", "bin/", "obj/" };
+    private static readonly Regex StudentIdRegex = new(@"SE\d{6}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public ArchiveExtractorService(ILogger<ArchiveExtractorService> logger)
     {
@@ -16,7 +18,7 @@ public class ArchiveExtractorService : IArchiveExtractorService
 
     public async Task<ArchiveExtractionResult> ExtractAndProcessAsync(
         Stream archiveStream,
-        Func<string, Stream, Task> processStudentZip)
+        Func<string, string, Stream, Task> processStudentZip)
     {
         var result = new ArchiveExtractionResult { Success = true };
 
@@ -35,18 +37,27 @@ public class ArchiveExtractorService : IArchiveExtractorService
             {
                 if (!IsValidSolutionZip(entry)) continue;
 
-                var studentId = ExtractStudentId(entry.Key);
+                var (studentId, folderName) = ExtractStudentInfo(entry.Key);
+
                 if (string.IsNullOrEmpty(studentId))
                 {
-                    _logger.LogWarning("Could not extract StudentId from: {Path}", entry.Key);
+                    _logger.LogWarning("Could not extract StudentId from path: {Path}", entry.Key);
                     continue;
                 }
 
-                result.DetectedStudents.Add(studentId);
-                _logger.LogInformation("Processing solution for student: {StudentId}", studentId);
+                result.DetectedStudents.Add(new StudentSubmissionInfo
+                {
+                    StudentId = studentId,
+                    FolderName = folderName
+                });
+
+                _logger.LogInformation(
+                    "Processing solution for student: {StudentId} from folder: {FolderName}",
+                    studentId,
+                    folderName);
 
                 using var zipStream = entry.OpenEntryStream();
-                await processStudentZip(studentId, zipStream);
+                await processStudentZip(studentId, folderName, zipStream);
             }
         }
         catch (Exception ex)
@@ -113,9 +124,49 @@ public class ArchiveExtractorService : IArchiveExtractorService
     private bool IsJunkPath(string path) =>
         JunkPaths.Any(j => path.Contains(j, StringComparison.OrdinalIgnoreCase));
 
-    private string ExtractStudentId(string path)
+    /// <summary>
+    /// Extracts student ID (SE + 6 digits) and folder name from archive path
+    /// Example: "PRN222_SU25.../DanhPTSE184514/0/solution.zip" 
+    /// Returns: (StudentId: "SE184514", FolderName: "DanhPTSE184514")
+    /// </summary>
+    private (string StudentId, string FolderName) ExtractStudentInfo(string path)
     {
-        var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 1 ? parts[1] : null;
+        try
+        {
+            var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
+            string studentFolder = null;
+            string studentId = null;
+
+            foreach (var part in parts)
+            {
+                var match = StudentIdRegex.Match(part);
+                if (match.Success)
+                {
+                    studentId = match.Value.ToUpper(); // Normalize to uppercase SE123456
+                    studentFolder = part;
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(studentId))
+            {
+                _logger.LogWarning("Could not find SE+6digits pattern in path: {Path}", path);
+                return (null, null);
+            }
+
+            _logger.LogDebug(
+                "Extracted StudentId: {StudentId}, FolderName: {FolderName} from path: {Path}",
+                studentId,
+                studentFolder,
+                path);
+
+            return (studentId, studentFolder);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extracting student info from path: {Path}", path);
+            return (null, null);
+        }
     }
 }

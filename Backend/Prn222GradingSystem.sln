@@ -61,6 +61,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ollama", "Ollama", "{6D0F1B
 		Docker\Ollama\Dockerfile = Docker\Ollama\Dockerfile
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ApiGateway", "ApiGateway", "{994CCF93-47B0-40F0-A340-417232B6D1E2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApiGateway", "ApiGateway\ApiGateway\ApiGateway.csproj", "{C3FF9C7B-DC19-52B5-B861-716F1AFD9714}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -135,6 +139,10 @@ Global
 		{96405198-7B20-404D-9ED5-252DDDB01999}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{96405198-7B20-404D-9ED5-252DDDB01999}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{96405198-7B20-404D-9ED5-252DDDB01999}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3FF9C7B-DC19-52B5-B861-716F1AFD9714}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3FF9C7B-DC19-52B5-B861-716F1AFD9714}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3FF9C7B-DC19-52B5-B861-716F1AFD9714}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3FF9C7B-DC19-52B5-B861-716F1AFD9714}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -162,6 +170,7 @@ Global
 		{7B9B6A7D-515E-4660-B08C-9E4984CC4EE8} = {FF8E7D7E-B139-43C0-967A-6EF845CB7433}
 		{96405198-7B20-404D-9ED5-252DDDB01999} = {FF8E7D7E-B139-43C0-967A-6EF845CB7433}
 		{6D0F1B12-254E-4370-9184-9D42E64B27EE} = {E759652D-18CE-4C06-B58E-4B75CB5EE283}
+		{C3FF9C7B-DC19-52B5-B861-716F1AFD9714} = {994CCF93-47B0-40F0-A340-417232B6D1E2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7D791AAF-676D-40B5-8C48-1EA136DD272D}

@@ -33,6 +33,7 @@ public class ScanLogicService : IScanLogicService
 
         var violations = new List<ScanResultItem>();
         var studentCodes = new Dictionary<string, string>();
+        var studentFolders = new Dictionary<string, string>(); // Track folder names
         var collectionName = submissionBatchId.ToString();
 
         try
@@ -40,8 +41,14 @@ public class ScanLogicService : IScanLogicService
             // Phase 1: Extract & Scan
             var extractionResult = await _archiveExtractor.ExtractAndProcessAsync(
                 rarFileStream,
-                async (studentId, zipStream) =>
+                async (studentId, folderName, zipStream) =>
                 {
+                    // Store folder name
+                    if (!studentFolders.ContainsKey(studentId))
+                    {
+                        studentFolders[studentId] = folderName;
+                    }
+
                     var scanResult = await _codeScanner.ScanZipAsync(studentId, zipStream, forbiddenKeywords);
                     violations.AddRange(scanResult.Violations);
 
@@ -49,7 +56,8 @@ public class ScanLogicService : IScanLogicService
                     {
                         if (studentCodes.ContainsKey(studentId))
                         {
-                            _logger.LogWarning("Duplicate student {StudentId}, appending code", studentId);
+                            _logger.LogWarning("Duplicate student {StudentId} in folder {FolderName}, appending code",
+                                studentId, folderName);
                             studentCodes[studentId] += scanResult.SourceCode;
                         }
                         else
@@ -62,7 +70,12 @@ public class ScanLogicService : IScanLogicService
             if (!extractionResult.Success)
             {
                 violations.Add(CreateSystemError(extractionResult.ErrorMessage));
-                return new ScanResult { Violations = violations, StudentCodes = new List<string>() };
+                return new ScanResult
+                {
+                    Violations = violations,
+                    StudentCodes = new List<string>(),
+                    StudentFolders = new Dictionary<string, string>()
+                };
             }
 
             // Phase 2: Plagiarism Detection
@@ -78,14 +91,20 @@ public class ScanLogicService : IScanLogicService
             return new ScanResult
             {
                 Violations = violations,
-                StudentCodes = extractionResult.DetectedStudents.Distinct().ToList()
+                StudentCodes = extractionResult.DetectedStudents.Select(s => s.StudentId).Distinct().ToList(),
+                StudentFolders = studentFolders
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Critical scan error for batch {BatchId}", submissionBatchId);
             violations.Add(CreateSystemError(ex.Message));
-            return new ScanResult { Violations = violations, StudentCodes = new List<string>() };
+            return new ScanResult
+            {
+                Violations = violations,
+                StudentCodes = new List<string>(),
+                StudentFolders = new Dictionary<string, string>()
+            };
         }
     }
 

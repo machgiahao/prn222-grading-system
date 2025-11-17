@@ -20,21 +20,6 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
         var configuration = builder.Configuration;
 
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowSpecificOrigins",
-                policy =>
-                {
-                    policy.WithOrigins(
-                            "http://localhost:5001",
-                            "https://localhost:7001"
-                        )
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                });
-        });
-
         builder.Services
             .AddApplicationService(configuration)
             .AddInfrastructureService(configuration);
@@ -101,14 +86,11 @@ public class Program
             });
         });
         builder.Services.AddAuthorization();
+        builder.Services.AddHealthChecks();
 
         var app = builder.Build();
+
         app.ApplyMigrations<ExamDbContext>();
-        app.UseCors(policy =>
-            policy.WithOrigins("*")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-        );
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -120,8 +102,8 @@ public class Program
         app.UseAuthorization();
         app.UseUserContext();
         app.UseExceptionHandler(options => { });
-
         app.MapControllers();
+        app.MapHealthChecks("/health");
 
         app.Run();
     }
