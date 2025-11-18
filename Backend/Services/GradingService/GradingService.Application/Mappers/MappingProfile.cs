@@ -20,5 +20,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ViolationCount, opt => opt.MapFrom(src =>
                 src.Violations != null ? src.Violations.Count : 0
             ));
+
+        CreateMap<Submission, ModerationTaskDto>()
+            .ForMember(dest => dest.ViolationCount, opt => opt.MapFrom(src => src.Violations.Count))
+            .ForMember(dest => dest.BatchName, opt => opt.MapFrom(src => src.Batch != null ? src.Batch.RarFilePath : ""))
+            .ForMember(dest => dest.Violations, opt => opt.MapFrom(src => src.Violations));
+
+        CreateMap<Violation, ViolationDetailDto>();
     }
 }

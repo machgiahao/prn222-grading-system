@@ -40,11 +40,11 @@ public class SubmissionRepository : Repository<Submission>, ISubmissionRepositor
 
     public async Task<List<Submission>> GetModerationQueueAsync(CancellationToken cancellationToken)
     {
-        return await _dbSet
-            .Where(s => s.Status == SubmissionStatus.Flagged)
-            .Include(s => s.Batch)
+        return await _context.Submissions
             .Include(s => s.Violations)
-            .OrderBy(s => s.Batch.Id)
+            .Include(s => s.Batch)
+            .Where(s => s.Status == SubmissionStatus.Flagged && s.Violations.Any())
+            .OrderByDescending(s => s.Violations.Count)  
             .ToListAsync(cancellationToken);
     }
 

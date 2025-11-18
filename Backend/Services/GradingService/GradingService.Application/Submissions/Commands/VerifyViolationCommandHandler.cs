@@ -1,11 +1,9 @@
 ﻿using GradingService.Domain.Commons;
 using GradingService.Domain.Repositories;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using SharedLibrary.Common.CQRS;
 using SharedLibrary.Common.Exceptions;
 using SharedLibrary.Common.Repositories;
-using System.Security.Claims;
 
 namespace GradingService.Application.Submissions.Commands;
 
