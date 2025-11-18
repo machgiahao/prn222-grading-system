@@ -1,145 +1,80 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/sidebar';
-import { DashboardHeader } from '@/components/dashboard-header';
-import { AnalyticsCards } from '@/components/analytics-cards';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card } from '@/components/ui/card';
+import { BarChart3, BookOpen, Users, CheckSquare } from 'lucide-react';
 
-interface AnalyticsData {
-  stats: {
-    totalSubmissions: number;
-    gradedSubmissions: number;
-    pendingGrading: number;
-    plagiarismDetected: number;
-    violationsFound: number;
-    totalExaminers: number;
-    averageGrade: number;
-    completionRate: number;
-  };
-  bySubject: Array<{ subject: string; submissions: number; graded: number }>;
-  byStatus: Array<{ status: string; count: number; percentage: number }>;
-}
-
-const CHART_COLORS = ['oklch(0.55 0.22 263.9)', 'oklch(0.65 0.22 263.9)', 'oklch(0.7 0.22 29.2)'];
-
-export default function AdminDashboardPage() {
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const res = await fetch('/api/admin/analytics');
-        const data = await res.json();
-        setAnalytics(data);
-      } catch (error) {
-        console.error('[v0] Fetch error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, []);
+export default function AdminDashboard() {
+  const stats = [
+    { label: 'Tổng bài thi', value: '12', icon: BookOpen, color: 'bg-blue-500' },
+    { label: 'Phiếu chấm', value: '8', icon: CheckSquare, color: 'bg-green-500' },
+    { label: 'Người dùng', value: '45', icon: Users, color: 'bg-purple-500' },
+    { label: 'Báo cáo', value: '15', icon: BarChart3, color: 'bg-orange-500' },
+  ];
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <DashboardHeader />
-        
-        <main className="flex-1 overflow-auto">
-          <div className="p-8">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-2">Admin Dashboard</h2>
-              <p className="text-muted-foreground">System overview and analytics</p>
+    <MainLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Quản lý toàn bộ hệ thống chấm điểm
+          </p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={stat.label} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {stat.label}
+                    </p>
+                    <p className="text-3xl font-bold mt-2">{stat.value}</p>
+                  </div>
+                  <div className={`${stat.color} p-3 rounded-lg text-white`}>
+                    <Icon size={24} />
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Quick Actions */}
+        <Card className="p-6">
+          <h2 className="text-xl font-bold mb-4">Hướng dẫn nhanh</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold mb-2">📚 Quản lý bài thi</h3>
+              <p className="text-muted-foreground">
+                Tạo, cập nhật, xóa các bài thi và định nghĩa từ khóa cấm
+              </p>
             </div>
-
-            {isLoading || !analytics ? (
-              <div className="text-foreground">Loading analytics...</div>
-            ) : (
-              <>
-                {/* Analytics Cards */}
-                <AnalyticsCards stats={analytics.stats} />
-
-                {/* Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  {/* Submissions by Subject */}
-                  <div className="rounded-lg bg-card border border-border p-6">
-                    <h3 className="text-lg font-semibold text-foreground mb-6">Submissions by Subject</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={analytics.bySubject}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                        <XAxis dataKey="subject" stroke="var(--color-muted-foreground)" />
-                        <YAxis stroke="var(--color-muted-foreground)" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '8px',
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="submissions" fill="var(--color-primary)" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="graded" fill="var(--color-accent)" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Status Distribution */}
-                  <div className="rounded-lg bg-card border border-border p-6">
-                    <h3 className="text-lg font-semibold text-foreground mb-6">Grading Status</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={analytics.byStatus}
-                          dataKey="count"
-                          nameKey="status"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          label
-                        >
-                          {analytics.byStatus.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'var(--color-background)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: '8px',
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Summary Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                  <div className="rounded-lg bg-card border border-border p-6">
-                    <p className="text-muted-foreground text-sm mb-2">Average Grade</p>
-                    <p className="text-4xl font-bold text-primary">{analytics.stats.averageGrade}</p>
-                    <p className="text-xs text-muted-foreground mt-2">out of 10</p>
-                  </div>
-                  <div className="rounded-lg bg-card border border-border p-6">
-                    <p className="text-muted-foreground text-sm mb-2">Active Examiners</p>
-                    <p className="text-4xl font-bold text-accent">{analytics.stats.totalExaminers}</p>
-                    <p className="text-xs text-muted-foreground mt-2">grading submissions</p>
-                  </div>
-                  <div className="rounded-lg bg-card border border-border p-6">
-                    <p className="text-muted-foreground text-sm mb-2">Pending Review</p>
-                    <p className="text-4xl font-bold text-destructive">{analytics.stats.pendingGrading}</p>
-                    <p className="text-xs text-muted-foreground mt-2">submissions</p>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold mb-2">📋 Phiếu chấm</h3>
+              <p className="text-muted-foreground">
+                Quản lý tiêu chí chấm điểm và mẫu phiếu chấm
+              </p>
+            </div>
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold mb-2">⚙️ Cấu hình hệ thống</h3>
+              <p className="text-muted-foreground">
+                Quản lý môn học, học kỳ, và người dùng
+              </p>
+            </div>
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-semibold mb-2">📊 Báo cáo</h3>
+              <p className="text-muted-foreground">
+                Phê duyệt kết quả và xuất báo cáo Excel
+              </p>
+            </div>
           </div>
-        </main>
+        </Card>
       </div>
-    </div>
+    </MainLayout>
   );
 }
