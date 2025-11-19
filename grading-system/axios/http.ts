@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_SERVER_URL + "/api",
+  baseURL: process.env.NEXT_PUBLIC_SERVER_URL + "/api/v1",
   withCredentials: true,
 });
 
@@ -42,16 +42,9 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (
-      originalRequest.url.includes("/auth/students-register") ||
-      originalRequest.url.includes("/auth/sign-in") ||
-      originalRequest.url.includes("/auth/refresh-token") ||
-      originalRequest.url.includes("/auth/email/verification/send") ||
-      originalRequest.url.includes("/auth/email/verification/confirm") ||
-      originalRequest.url.includes("/auth/password/forgot") ||
-      originalRequest.url.includes("/auth/password/reset") ||
-      originalRequest.url.includes("/auth/password/otp") ||
-      originalRequest.url.includes("/auth/password/change") ||
-      originalRequest.url.includes("/auth/refresh-token")
+      originalRequest.url.includes("/auth/register") ||
+      originalRequest.url.includes("/auth/login") ||
+      originalRequest.url.includes("/auth/refresh")
     ) {
       return Promise.reject(error);
     }
@@ -84,7 +77,7 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         const skipAuthRedirect =
           (originalRequest as any)?.skipAuthRedirect === true ||
-          !!((originalRequest as any)?.headers?.["x-skip-auth-redirect"]);
+          !!(originalRequest as any)?.headers?.["x-skip-auth-redirect"];
 
         if (skipAuthRedirect) {
           return Promise.reject(refreshError);
