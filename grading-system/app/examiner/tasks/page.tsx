@@ -1,161 +1,199 @@
 'use client';
 
-// Các imports khác...
 import { Button } from '@/components/ui/button';
-import { Award, ChevronRight } from 'lucide-react';
+import { Award, ChevronRight, Search, LogOut } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
 // Import type và service
 import { MyTask } from '@/lib/types/common';
-import { getMyTasks } from '@/services/examinerServices'; 
-// Giả sử examinerServices là tên file dịch vụ chứa getMyTasks
+import { getMyTasks } from '@/services/examinerServices';
+import { useAuth } from '@/context/auth-context';
 
-const fakeData: MyTask[] = [
-    {
-      "id": "8a5d48ea-2bcb-4782-a087-819365e161eb",
-      "studentCode": "truongpmse182027",
-      "status": "Assigned",
-      "submissionBatchId": "257a5419-ac2e-4e55-a288-cb4e6b4e7b92"
-    },
-    {
-      "id": "cc1f7260-75d5-4328-b381-790b7f8de3fb",
-      "studentCode": "VuNDHSE181551",
-      "status": "Assigned",
-      "submissionBatchId": "257a5419-ac2e-4e55-a288-cb4e6b4e7b92"
-    }
-  ]
 export default function TasksPage() {
+  const [taskList, setTaskList] = useState<MyTask[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<MyTask[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { logout } = useAuth();
 
-    
-    // State để lưu danh sách nhiệm vụ
-    const [taskList, setTaskList] = useState<MyTask[]>(fakeData);
-    // State để quản lý trạng thái tải (loading) và lỗi (error)
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    // const fetchTasks = async () => {
-    //     setIsLoading(true);
-    //     setError(null);
-    //     try {
-    //         // GỌI API VÀ CẬP NHẬT STATE
-    //         const data = await getMyTasks(); 
-    //         setTaskList(data);
-    //     } catch (err: any) {
-    //         console.error("Failed to fetch tasks:", err);
-    //         // Xử lý lỗi (ví dụ: hiển thị thông báo nếu API trả về lỗi 500)
-    //         setError("Không thể tải danh sách nhiệm vụ. Vui lòng thử lại.");
-    //     } finally {
-    //         setIsLoading(false);
-    //     }
-    // }
-
-    // // GỌI API KHI COMPONENT ĐƯỢC MOUNT
-    // useEffect(() => {
-    //     fetchTasks();
-    // }, []); // Mảng phụ thuộc rỗng đảm bảo chỉ chạy 1 lần sau render đầu tiên
-
-    // -------------------- LOGIC RENDER --------------------
-
-    // Trạng thái Loading
-    // if (isLoading) {
-    //     return (
-    //         <div className="flex justify-center items-center h-screen">
-    //             <p>Đang tải nhiệm vụ...</p>
-    //         </div>
-    //     );
-    // }
-
-    // Trạng thái Lỗi
-    if (error) {
-        return (
-            <div className="flex justify-center items-center h-screen text-destructive">
-                <p>Lỗi: {error}</p>
-            </div>
-        );
+  const fetchTasks = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getMyTasks();
+      setTaskList(data);
+      setFilteredTasks(data);
+    } catch (err: any) {
+      console.error("Failed to fetch tasks:", err);
+      setError("Unable to load the task list. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Tổng số nhiệm vụ còn lại
-    const remainingTasks = taskList.length;
+  };
 
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredTasks(taskList);
+    } else {
+      const filtered = taskList.filter(task =>
+        task.studentCode.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredTasks(filtered);
+    }
+  }, [searchQuery, taskList]);
+
+  const handleLogout = () => () => {
+    logout();
+    window.location.href = '/';
+  }
+
+  if (isLoading) {
     return (
-        <div className="flex h-screen bg-background">
-            <div className="flex-1 flex flex-col">
-                {/* ... DashboardHeader và main ... */}
-                
-                <main className="flex-1 overflow-auto">
-                    <div className="p-8">
-                        {/* ... Tiêu đề ... */}
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-foreground mb-2">Task List</h2>
-                            <p className="text-muted-foreground">Review and grade student submissions</p>
-                        </div>
-
-                        {/* Thẻ thống kê */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="rounded-lg bg-card border border-border p-6">
-                                <p className="text-muted-foreground text-sm mb-2">Remain in queue</p>
-                                <p className="text-4xl font-bold text-primary">{remainingTasks}</p>
-                                <p className="text-xs text-muted-foreground mt-2">Submissions</p>
-                            </div>
-                            {/* ... Các thẻ thống kê khác nếu cần ... */}
-                        </div>
-
-                        {/* Danh sách nhiệm vụ hiện tại */}
-                        <div className="rounded-lg bg-card border border-border p-6">
-                            <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-                                <Award className="h-5 w-5 text-primary" />
-                                Your Grading Queue ({remainingTasks} items)
-                            </h3>
-
-                            <div className="space-y-4">
-                                {/* DÙNG DỮ LIỆU THỰC TẾ: taskList */}
-                                {taskList.length === 0 ? (
-                                    <p className="text-muted-foreground italic">
-                                        Không có bài nộp nào được giao cho bạn.
-                                    </p>
-                                ) : (
-                                    taskList.map((task) => (
-                                        <div
-                                            // Sử dụng ID của bài nộp làm key
-                                            key={task.id} 
-                                            className="flex items-center justify-between p-4 rounded-lg bg-background border border-border hover:border-primary transition"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-4">
-                                                    <div>
-                                                        {/* Hiển thị StudentCode và SubmissionBatchId */}
-                                                        <p className="font-semibold text-foreground">{task.studentCode}</p>
-                                                        <p className="text-sm text-muted-foreground">Batch ID: {task.submissionBatchId}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {/* Hiển thị Status */}
-                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                                            task.status === 'Assigned' ? 'bg-yellow-100 text-yellow-800' :
-                                                            task.status === 'Grading' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-green-100 text-green-800'
-                                                        }`}>
-                                                            {task.status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Thay thế href để chuyển đến trang chấm điểm */}
-                                            <Button 
-                                                className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                                                onClick={() => {
-                                                    window.location.href = `/examiner/${task.id}`;
-                                                }}
-                                            >
-                                                Grade
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading tasks...</div>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-red-600">Error: {error}</div>
+      </div>
+    );
+  }
+
+  const remainingTasks = filteredTasks.length;
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <header className="border-b border-zinc-800 bg-zinc-900">
+        <div className="container mx-auto px-4 py-4 max-w-6xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Award className="w-8 h-8 text-blue-500" />
+              <div>
+                <h1 className="text-xl font-bold text-white">Grading System</h1>
+                <p className="text-sm text-gray-400">Examiner Portal</p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="gap-2 bg-transparent border-zinc-700 text-white hover:bg-red-600 hover:border-red-600 !text-white cursor-pointer transition-colors"
+              onClick={handleLogout()}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-white mb-2">Task List</h1>
+          <p className="text-gray-400">Review and grade student submissions</p>
+        </div>
+
+        {/* Stats Card */}
+        <div className="grid grid-cols-1 gap-6 mb-8">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+            <div className="mb-4">
+              <p className="text-gray-400 text-sm mb-1">Remain in queue</p>
+              <p className="text-5xl font-bold text-blue-500">{taskList.length}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Submissions</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by Student Code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300 cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="mt-2 text-sm text-gray-400">
+              Found {remainingTasks} result{remainingTasks !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
+        {/* Task List */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+          <div className="flex items-center mb-6">
+            <Award className="w-6 h-6 text-blue-500 mr-2" />
+            <h2 className="text-xl font-semibold text-white">
+              Your Grading Queue ({remainingTasks} items)
+            </h2>
+          </div>
+
+          {filteredTasks.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">
+                {searchQuery 
+                  ? `No submissions found matching "${searchQuery}"`
+                  : "No submissions have been assigned to you"
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="border border-zinc-800 rounded-lg p-4 hover:border-zinc-700 transition-all bg-black"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold text-white mb-1">
+                        Student Code: {task.studentCode}
+                      </p>
+                      <p className="text-sm text-gray-400 mb-2">
+                        Batch ID: {task.submissionBatchId}
+                      </p>
+                      <span className="inline-block px-3 py-1 bg-yellow-900/30 text-yellow-500 text-xs font-medium rounded-full border border-yellow-900/50">
+                        {task.status}
+                      </span>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        window.location.href = `/examiner/${task.id}`;
+                      }}
+                      className="ml-4 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+                    >
+                      Grade
+                      <ChevronRight className="ml-2 w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

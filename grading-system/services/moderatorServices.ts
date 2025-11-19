@@ -20,7 +20,7 @@ export const verifyViolation = async (
     payload: VerifyViolationPayload
   ): Promise<VerifyViolationResponse> => {
     try {
-      const response = await api.post<VerifyViolationResponse>(submissionBaseUrl, payload);
+      const response = await api.post<VerifyViolationResponse>(submissionBaseUrl + "/verify-violation", payload);
       return response.data;
     } catch (error) {
       throw error;

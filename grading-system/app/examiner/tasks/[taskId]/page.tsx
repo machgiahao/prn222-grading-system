@@ -3,147 +3,46 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Award, Save, ArrowLeft, FileText, User, ChevronRight } from 'lucide-react';
+import { Award, Save, ArrowLeft, FileText, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-// Import types và services
 import { GradingDetails, GradePayload, GradedItem } from '@/lib/types/examiner';
 import { getGradingDetails, postSubmissionGrade } from '@/services/examinerServices';
-
-// Fake data để test UI
-const fakeGradingDetails: GradingDetails = {
-  "submissionId": "8a5d48ea-2bcb-4782-a087-819365e161eb",
-  "studentCode": "truongpmse182027",
-  "originalFileName": "truongpmse182027/solution.zip",
-  "status": "Assigned",
-  "rubricItems": [
-    {
-      "id": "aec47206-fa5a-498f-b495-24249e5ab2b4",
-      "criteria": "Login",
-      "maxScore": 1
-    },
-    {
-      "id": "777565f2-c277-4d59-b452-afe5e6148596",
-      "criteria": "List All",
-      "maxScore": 0.25
-    },
-    {
-      "id": "67ff713b-01f0-4243-9c88-e0e56678b684",
-      "criteria": "List All 2",
-      "maxScore": 0.25
-    },
-    {
-      "id": "833dc674-4427-493b-a0ae-2d73ff55c58c",
-      "criteria": "Paging/Phân trang",
-      "maxScore": 1
-    },
-    {
-      "id": "dff5e98f-df09-4da3-b28f-306c1cb724bd",
-      "criteria": "Add OK",
-      "maxScore": 1
-    },
-    {
-      "id": "7169dda6-6eda-4bb5-aed6-dd04e6d892b0",
-      "criteria": "Display Top",
-      "maxScore": 0.25
-    },
-    {
-      "id": "1bf7140a-bf4d-4738-aa8b-22d3251cad09",
-      "criteria": "Validation - Combobox",
-      "maxScore": 0.25
-    },
-    {
-      "id": "8213221f-8840-4b7f-be4a-f02e96b721af",
-      "criteria": "Validation - Required",
-      "maxScore": 0.25
-    },
-    {
-      "id": "1720c968-52a5-40b4-bc47-c90e0920f7c3",
-      "criteria": "Validation - Length",
-      "maxScore": 0.25
-    },
-    {
-      "id": "d6e830b1-8d10-44d3-8df4-d6ff94e2662f",
-      "criteria": "Validation - No special characters",
-      "maxScore": 0.5
-    },
-    {
-      "id": "e557417c-3340-4e6c-83e4-75b8b014adf5",
-      "criteria": "Update OK",
-      "maxScore": 1
-    },
-    {
-      "id": "23dc88de-f35f-4969-b3dd-9c28b6f74a26",
-      "criteria": "Update Validation",
-      "maxScore": 1
-    },
-    {
-      "id": "3c0f5bf3-6bdc-4e6d-8cd4-c5880b2190db",
-      "criteria": "Search - Test 1",
-      "maxScore": 0.5
-    },
-    {
-      "id": "a3e358bc-9331-4337-86d3-c9c95d3c0d8b",
-      "criteria": "Search - Test 2",
-      "maxScore": 0.5
-    },
-    {
-      "id": "00361009-0152-4968-be2c-4b8ca1b827a3",
-      "criteria": "Search - Test 3",
-      "maxScore": 0.5
-    },
-    {
-      "id": "fada22d9-da96-4ab4-ad78-acb704eab442",
-      "criteria": "Delete with SignalR",
-      "maxScore": 1.5
-    }
-  ]
-};
 
 export default function ExaminerGradingPage() {
     const params = useParams();
     const router = useRouter();
     const taskId = params?.taskId as string;
-
-    // State để lưu chi tiết chấm điểm
-    const [gradingDetails, setGradingDetails] = useState<GradingDetails>(fakeGradingDetails);
-    const [isLoading, setIsLoading] = useState(false);
+    
+    // Khởi tạo state là null thay vì fake data
+    const [gradingDetails, setGradingDetails] = useState<GradingDetails | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // State để lưu điểm số của từng rubric item
     const [scores, setScores] = useState<{ [key: string]: number | string }>({});
-    
-    // State để lưu comment
     const [comment, setComment] = useState<string>("");
-    
-    // State để quản lý trạng thái submit
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // // GỌI API ĐỂ LẤY CHI TIẾT CHẤM ĐIỂM
-    // const fetchGradingDetails = async () => {
-    //     setIsLoading(true);
-    //     setError(null);
-    //     try {
-    //         const data = await getGradingDetails(taskId);
-    //         setGradingDetails(data);
-    //     } catch (err: any) {
-    //         console.error("Failed to fetch grading details:", err);
-    //         setError("Không thể tải chi tiết bài chấm. Vui lòng thử lại.");
-    //     } finally {
-    //         setIsLoading(false);
-    //     }
-    // };
+    const fetchGradingDetails = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await getGradingDetails(taskId);
+            setGradingDetails(data);
+        } catch (err: any) {
+            console.error("Failed to fetch grading details:", err);
+            setError("Unable to load grading details. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-    // // GỌI API KHI COMPONENT ĐƯỢC MOUNT
-    // useEffect(() => {
-    //     if (taskId) {
-    //         fetchGradingDetails();
-    //     }
-    // }, [taskId]);
+    useEffect(() => {
+        if (taskId) {
+            fetchGradingDetails();
+        }
+    }, [taskId]);
 
-    // Xử lý thay đổi điểm số
     const handleScoreChange = (rubricItemId: string, value: string, maxScore: number) => {
-        // Nếu value rỗng, cho phép (để user có thể xóa)
         if (value === '') {
             setScores(prev => ({
                 ...prev,
@@ -154,9 +53,7 @@ export default function ExaminerGradingPage() {
 
         const numValue = parseFloat(value);
         
-        // Kiểm tra nếu giá trị hợp lệ
         if (!isNaN(numValue)) {
-            // Nếu vượt quá max, set về max
             if (numValue > maxScore) {
                 setScores(prev => ({
                     ...prev,
@@ -165,7 +62,6 @@ export default function ExaminerGradingPage() {
                 return;
             }
             
-            // Nếu âm, set về 0
             if (numValue < 0) {
                 setScores(prev => ({
                     ...prev,
@@ -174,7 +70,6 @@ export default function ExaminerGradingPage() {
                 return;
             }
             
-            // Giá trị hợp lệ
             setScores(prev => ({
                 ...prev,
                 [rubricItemId]: value
@@ -200,16 +95,18 @@ export default function ExaminerGradingPage() {
     };
 
     const handleSetEmptyToZero = () => {
+        if (!gradingDetails) return;
+        
         const emptyCount = gradingDetails.rubricItems.filter(
             item => scores[item.id] === undefined || scores[item.id] === '' || scores[item.id] === null
         ).length;
         
         if (emptyCount === 0) {
-            alert('Tất cả các tiêu chí đã được chấm điểm.');
+            alert('All criteria have been scored.');
             return;
         }
 
-        const confirm = window.confirm(`Bạn có chắc muốn đặt ${emptyCount} tiêu chí chưa chấm thành 0 điểm?`);
+        const confirm = window.confirm(`Are you sure you want to set ${emptyCount} ungraded criteria to 0?`);
         if (confirm) {
             const newScores = { ...scores };
             gradingDetails.rubricItems.forEach(item => {
@@ -222,7 +119,9 @@ export default function ExaminerGradingPage() {
     };
 
     const handleSetAllZero = () => {
-        const confirm = window.confirm('Bạn có chắc muốn đặt tất cả điểm về 0?');
+        if (!gradingDetails) return;
+        
+        const confirm = window.confirm('Are you sure you want to reset all scores to 0?');
         if (confirm) {
             const newScores: { [key: string]: number } = {};
             gradingDetails.rubricItems.forEach(item => {
@@ -246,16 +145,21 @@ export default function ExaminerGradingPage() {
     };
 
     const calculateMaxScore = () => {
+        if (!gradingDetails) return '0.00';
         return gradingDetails.rubricItems.reduce((sum, item) => sum + item.maxScore, 0).toFixed(2);
     };
 
     const handleSubmitGrade = async () => {
+        if (!gradingDetails) return;
+        
         const missingScores = gradingDetails.rubricItems.filter(
             item => scores[item.id] === undefined || scores[item.id] === '' || scores[item.id] === null
         );
 
         if (missingScores.length > 0) {
-            alert(`Vui lòng nhập điểm cho tất cả các tiêu chí. Còn thiếu: ${missingScores.map(i => i.criteria).join(', ')}`);
+            alert(`Please enter scores for all criteria. Missing: ${missingScores
+                .map(i => i.criteria)
+                .join(', ')}`);
             return;
         }
 
@@ -268,7 +172,9 @@ export default function ExaminerGradingPage() {
         });
 
         if (invalidScores.length > 0) {
-            alert(`Điểm không hợp lệ cho: ${invalidScores.map(i => `${i.criteria} (max: ${i.maxScore})`).join(', ')}`);
+            alert(`Invalid score for: ${invalidScores
+                .map(i => `${i.criteria} (max: ${i.maxScore})`)
+                .join(', ')}`);
             return;
         }
 
@@ -291,43 +197,63 @@ export default function ExaminerGradingPage() {
 
         console.log("Payload to submit:", payload);
 
-        // setIsSubmitting(true);
-        // try {
-        //     const response = await postSubmissionGrade(payload);
-        //     alert(`Chấm điểm thành công! ${response.message}`);
-        //     // Chuyển về trang task list
-        //     router.push('/examiner/tasks');
-        // } catch (err: any) {
-        //     console.error("Failed to submit grade:", err);
-        //     alert("Không thể gửi điểm. Vui lòng thử lại.");
-        // } finally {
-        //     setIsSubmitting(false);
-        // }
-
         setIsSubmitting(true);
-        setTimeout(() => {
+        try {
+            const response = await postSubmissionGrade(payload);
+            alert(`Grading successful! ${response.message}`);
+            router.push('/examiner/tasks');
+        } catch (err: any) {
+            console.error("Failed to submit grade:", err);
+            alert("Failed to submit grade. Please try again.");
+        } finally {
             setIsSubmitting(false);
-            alert("Chấm điểm thành công! (Demo mode)");
-            // router.push('/examiner');
-        }, 1000);
+        }
     };
 
+    // Loading state
     if (isLoading) {
         return (
-            <div className="flex justify-center items-center h-screen">
-                <p>Đang tải chi tiết bài chấm...</p>
+            <div className="flex justify-center items-center h-screen bg-background">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading grading details...</p>
+                </div>
             </div>
         );
     }
 
+    // Error state
     if (error) {
         return (
-            <div className="flex justify-center items-center h-screen text-destructive">
-                <p>Lỗi: {error}</p>
+            <div className="flex flex-col justify-center items-center h-screen bg-background">
+                <div className="text-center max-w-md">
+                    <div className="text-destructive text-5xl mb-4">⚠️</div>
+                    <h2 className="text-2xl font-bold text-foreground mb-2">Error</h2>
+                    <p className="text-muted-foreground mb-6">{error}</p>
+                    <div className="flex gap-4 justify-center">
+                        <Button variant="outline" className='hover:cursor-pointer' onClick={() => router.push('/examiner/tasks')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Tasks
+                        </Button>
+                        <Button className='hover:cursor-pointer' onClick={fetchGradingDetails}>
+                            Try Again
+                        </Button>
+                    </div>
+                </div>
             </div>
         );
     }
 
+    // Data not available state
+    if (!gradingDetails) {
+        return (
+            <div className="flex justify-center items-center h-screen bg-background">
+                <p className="text-muted-foreground">No grading details available.</p>
+            </div>
+        );
+    }
+
+    // Main content - chỉ render khi đã có data
     return (
         <div className="flex h-screen bg-background">
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -336,8 +262,8 @@ export default function ExaminerGradingPage() {
                         <div className="mb-6">
                             <Button
                                 variant="ghost"
-                                className="mb-4 gap-2"
-                                onClick={() => router.push('/examiner')}
+                                className="mb-4 gap-2 hover:bg-primary !text-white cursor-pointer"
+                                onClick={() => router.push('/examiner/tasks')}
                             >
                                 <ArrowLeft className="h-4 w-4" />
                                 Back to Task List
@@ -450,7 +376,7 @@ export default function ExaminerGradingPage() {
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="flex-1 h-7 text-xs px-1"
+                                                                    className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
                                                                     onClick={() => handleSetScore(item.id, 0)}
                                                                     title="Set to 0"
                                                                 >
@@ -460,7 +386,7 @@ export default function ExaminerGradingPage() {
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="flex-1 h-7 text-xs px-1"
+                                                                    className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
                                                                     onClick={() => handleAdjustScore(item.id, -0.5, item.maxScore)}
                                                                     title="Subtract 0.5"
                                                                 >
@@ -470,7 +396,7 @@ export default function ExaminerGradingPage() {
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="flex-1 h-7 text-xs px-1"
+                                                                    className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
                                                                     onClick={() => handleAdjustScore(item.id, 0.5, item.maxScore)}
                                                                     title="Add 0.5"
                                                                 >
@@ -480,14 +406,14 @@ export default function ExaminerGradingPage() {
                                                                     type="button"
                                                                     variant="outline"
                                                                     size="sm"
-                                                                    className="flex-1 h-7 text-xs px-1"
+                                                                    className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
                                                                     onClick={() => handleSetScore(item.id, item.maxScore)}
                                                                     title="Set to Max"
                                                                 >
                                                                     Max
                                                                 </Button>
                                                             </div>
-                                                        </div>
+                                                    </div>
                                                     </td>
                                                 ))}
                                                 <td className="border border-border bg-primary/5 p-3 text-center font-bold text-primary text-lg">
@@ -515,7 +441,8 @@ export default function ExaminerGradingPage() {
                         <div className="flex justify-end gap-4">
                             <Button
                                 variant="outline"
-                                onClick={() => router.push('/examiner')}
+                                className="hover:bg-primary !text-white"
+                                onClick={() => router.push('/examiner/tasks')}
                             >
                                 Cancel
                             </Button>
@@ -537,7 +464,7 @@ export default function ExaminerGradingPage() {
                                 disabled={isSubmitting}
                             >
                                 <Save className="h-4 w-4" />
-                                {isSubmitting ? 'Submitting...' : 'Subssmit Grade'}
+                                {isSubmitting ? 'Submitting...' : 'Submit Grade'}
                             </Button>
                         </div>
                     </div>
