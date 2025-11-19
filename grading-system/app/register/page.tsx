@@ -2,31 +2,44 @@
 
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function RegisterPage() {
+  const { register } = useAuth();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
     setError("");
     setIsLoading(true);
 
+    // validation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await login(email, password);
-      toast.success("Login successful!");
+      await register(username, email, password);
+      toast.success("Registered successfully!");
     } catch (err: any) {
-      toast.error(err.message || "Login failed");
-      setError(err.message || "Login failed");
+      toast.error(err.message || "Registration failed");
+      setError(err.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }
@@ -37,8 +50,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-gray-950 border border-gray-800 rounded-lg shadow-2xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-400">Sign in to your account to continue</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Create Account
+            </h1>
+            <p className="text-gray-400">Join us to continue</p>
           </div>
 
           {error && (
@@ -50,6 +65,29 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-6">
+            {/* Username */}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Username
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-gray-500"
+                  placeholder="Enter username"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Email */}
             <div>
               <label
                 htmlFor="email"
@@ -71,6 +109,7 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Password */}
             <div>
               <label
                 htmlFor="password"
@@ -86,7 +125,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-12 py-2 bg-gray-900 border border-gray-700 text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-gray-500"
-                  placeholder="Enter your password"
+                  placeholder="Enter password"
                   required
                 />
                 <button
@@ -103,32 +142,58 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium"
+            {/* Confirm Password */}
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-300 mb-2"
               >
-                Forgot password?
-              </button>
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full pl-10 pr-12 py-2 bg-gray-900 border border-gray-700 text-white rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition placeholder-gray-500"
+                  placeholder="Re-enter password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
             </div>
 
+            {/* Submit */}
             <button
-              onClick={handleLogin}
+              onClick={handleRegister}
               disabled={isLoading}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-950 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? "Creating account..." : "Create Account"}
             </button>
           </div>
 
+          {/* Back to login */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-400">
-              Don&apos;t have an account?{" "}
+              Already have an account?{" "}
               <button
                 className="text-blue-400 hover:text-blue-300 font-medium"
-                onClick={() => router.push("/register")}
+                onClick={() => router.push("/")}
               >
-                Sign up
+                Sign in
               </button>
             </p>
           </div>

@@ -55,6 +55,18 @@ public class Program
                             context.Token = accessToken;
                         }
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        Console.WriteLine("✅ Token validated successfully");
+                        var claims = context.Principal?.Claims.Select(c => $"{c.Type}: {c.Value}");
+                        Console.WriteLine($"Claims: {string.Join(", ", claims ?? Array.Empty<string>())}");
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine($"❌ Token authentication failed: {context.Exception.Message}");
+                        return Task.CompletedTask;
                     }
                 };
             });
@@ -142,31 +154,53 @@ public class Program
             });
         });
 
-        // ===== YARP Reverse Proxy =====
+        // ===== YARP Reverse Proxy với Token Forwarding =====
         builder.Services.AddReverseProxy()
             .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
             .AddTransforms(builderContext =>
             {
-                builderContext.AddRequestTransform(transformContext =>
+                // ✅ FIX: Forward Authorization header từ incoming request
+                builderContext.AddRequestTransform(async transformContext =>
                 {
-                    var authHeader = transformContext.HttpContext.Request.Headers.Authorization;
+                    var httpContext = transformContext.HttpContext;
+
+                    // Lấy token từ Authorization header
+                    var authHeader = httpContext.Request.Headers.Authorization.ToString();
+
                     if (!string.IsNullOrEmpty(authHeader))
                     {
+                        // Log để debug
+                        var logger = httpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                        logger.LogInformation("🔑 Forwarding Authorization header: {AuthHeader}",
+                            authHeader.Substring(0, Math.Min(50, authHeader.Length)) + "...");
+
+                        // Remove existing Authorization header if any
+                        transformContext.ProxyRequest.Headers.Remove("Authorization");
+
+                        // Add Authorization header to proxied request
                         transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
-                            "Authorization", authHeader.ToString());
+                            "Authorization", authHeader);
                     }
-                    return ValueTask.CompletedTask;
+                    else
+                    {
+                        var logger = httpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                        logger.LogWarning("⚠️ No Authorization header found in request to {Path}",
+                            httpContext.Request.Path);
+                    }
                 });
 
+                // Forward additional headers
                 builderContext.AddRequestTransform(transformContext =>
                 {
                     var request = transformContext.HttpContext.Request;
+
                     transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
                         "X-Forwarded-Host", request.Host.ToString());
                     transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
                         "X-Forwarded-Proto", request.Scheme);
                     transformContext.ProxyRequest.Headers.TryAddWithoutValidation(
                         "X-Real-IP", transformContext.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "");
+
                     return ValueTask.CompletedTask;
                 });
             });
@@ -239,13 +273,13 @@ public class Program
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
-                // Gateway's own endpoints (default)
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "🌐 Gateway API");
+                // Gateway's own endpoints 
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gateway API");
 
                 // Backend services via proxy endpoints
-                c.SwaggerEndpoint("/swagger-proxy/identity", "🔐 Identity Service");
-                c.SwaggerEndpoint("/swagger-proxy/exam", "📝 Exam Service");
-                c.SwaggerEndpoint("/swagger-proxy/grading", "📊 Grading Service");
+                c.SwaggerEndpoint("/swagger-proxy/identity", "Identity Service");
+                c.SwaggerEndpoint("/swagger-proxy/exam", "Exam Service");
+                c.SwaggerEndpoint("/swagger-proxy/grading", "Grading Service");
 
                 c.RoutePrefix = "swagger";
                 c.DocumentTitle = "API Gateway - All Services";
@@ -267,17 +301,21 @@ public class Program
 
         app.MapGet("/error", () => Results.Problem("An error occurred."));
 
-        // Request/Response Logging
+        // Request/Response Logging with Token Info
         app.Use(async (context, next) =>
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
             var startTime = DateTime.UtcNow;
 
+            var hasAuth = context.Request.Headers.ContainsKey("Authorization");
+            var authInfo = hasAuth ? "🔑 With Token" : "🔓 No Token";
+
             logger.LogInformation(
-                "[Gateway IN]  {Method} {Path} from {IP}",
+                "[Gateway IN]  {Method} {Path} from {IP} {AuthInfo}",
                 context.Request.Method,
                 context.Request.Path,
-                context.Connection.RemoteIpAddress
+                context.Connection.RemoteIpAddress,
+                authInfo
             );
 
             await next();
@@ -301,16 +339,20 @@ public class Program
             );
         });
 
-        app.UseResponseCompression();
         app.UseHttpsRedirection();
         app.UseCors("AllowLocalhost");
 
+        app.UseResponseCompression();
         app.UseRateLimiter();
-        app.UseAuthentication();
-        app.UseAuthorization();
+
+        app.UseAuthentication();  
+        app.UseAuthorization();   
 
         app.MapHealthChecks("/health");
+
         app.MapControllers();
+
+        // MapReverseProxy phải sau Authentication & Authorization
         app.MapReverseProxy();
 
         app.Run();
