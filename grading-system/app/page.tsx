@@ -26,7 +26,7 @@ export default function LoginPage() {
           alert("Login successful!");
           console.log("data", response.data);
           localStorage.setItem("accessToken", response.data.accessToken);
-          window.location.href = "/examiner";
+          window.location.href = "/moderator";
         } else {
           setError("Invalid email or password");
         }

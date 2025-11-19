@@ -1,7 +1,9 @@
 import { MyTask } from "./common";
 
 export interface ModerationQueueItem extends MyTask {
+    batchName: string;
     violationCount: number;
+    violations: ViolationDetail[];
 }
 
 export interface VerifyViolationPayload {
@@ -12,4 +14,11 @@ export interface VerifyViolationPayload {
 
 export interface VerifyViolationResponse {
     message: string;
+}
+
+export interface ViolationDetail {
+    id: string,
+    violationType: string,
+    details: string,
+    similarityScore: null | number
 }

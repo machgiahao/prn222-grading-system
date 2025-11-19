@@ -1,6 +1,6 @@
 'use client';
 
-import { MainLayout } from '@/components/layout/main-layout';
+// import { MainLayout } from '@/components/layout/main-layout';
 import { Card } from '@/components/ui/card';
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
 
@@ -22,7 +22,7 @@ export default function ModeratorDashboard() {
   ];
 
   return (
-    <MainLayout>
+    <div>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Bảng điều khiển</h1>
@@ -83,6 +83,6 @@ export default function ModeratorDashboard() {
           </Card>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 }
