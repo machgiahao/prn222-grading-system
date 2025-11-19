@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import api from "@/axios/http";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,16 +15,29 @@ export default function LoginPage() {
   const handleSubmit = async () => {
     setError("");
     setIsLoading(true);
-
-    setTimeout(() => {
-      if (email === "demo@example.com" && password === "password") {
-        alert("Login successful!");
-      } else {
-        setError("Invalid email or password");
+  
+    // Simulate delay
+    setTimeout(async () => {
+      try {
+        const response = await api.post("/auth/login", { email, password });
+        
+        // Example check (you might want to check response instead)
+        if (response.status === 200) {
+          alert("Login successful!");
+          console.log("data", response.data);
+          localStorage.setItem("accessToken", response.data.accessToken);
+          window.location.href = "/examiner";
+        } else {
+          setError("Invalid email or password");
+        }
+      } catch (err) {
+        setError("Something went wrong");
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }, 1000);
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
