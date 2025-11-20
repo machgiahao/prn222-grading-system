@@ -18,4 +18,5 @@ public sealed record ScanCompletedEvent
     public List<ScanResultItem> Violations { get; init; }
     public List<string> StudentCodes { get; init; }
     public Dictionary<string, string> StudentFolders { get; init; } = new();
+    public Dictionary<string, string> GitHubUrls { get; init; } = new();
 }

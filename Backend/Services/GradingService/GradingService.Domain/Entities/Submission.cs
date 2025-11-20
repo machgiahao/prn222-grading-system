@@ -7,7 +7,9 @@ public class Submission : Entity<Guid>
     public string StudentCode { get; set; }
     public string OriginalFileName { get; set; }
     public string FolderName { get; set; }
-    public string Status { get; set; } 
+    public string Status { get; set; }
+
+    public string? GitHubRepositoryUrl { get; set; } 
 
     public Guid SubmissionBatchId { get; set; }
     public virtual SubmissionBatch Batch { get; set; }

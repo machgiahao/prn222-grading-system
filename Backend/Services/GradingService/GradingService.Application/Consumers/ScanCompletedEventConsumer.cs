@@ -1,6 +1,5 @@
 ﻿using GradingService.Domain.Commons;
 using GradingService.Domain.Entities;
-using GradingService.Domain.Repositories;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using SharedLibrary.Common.Repositories;
@@ -22,7 +21,7 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
     public async Task Consume(ConsumeContext<ScanCompletedEvent> context)
     {
         var message = context.Message;
-        _logger.LogInformation("Received scan results for Batch: {BatchId}", message.SubmissionBatchId);
+        _logger.LogInformation("📨 Received scan results for Batch: {BatchId}", message.SubmissionBatchId);
 
         if (!await ValidateBatchExistsAsync(message.SubmissionBatchId, context.CancellationToken))
         {
@@ -34,7 +33,6 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
         var hasViolations = message.Violations?.Any() ?? false;
         if (!hasViolations)
         {
-            // Update status of submissions that has no violation to ReadyToGrade
             await HandleCleanBatchAsync(message.SubmissionBatchId, context.CancellationToken);
             return;
         }
@@ -49,7 +47,7 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
 
         if (batch == null)
         {
-            _logger.LogError("SubmissionBatch {BatchId} not found. Cannot process scan results", batchId);
+            _logger.LogError("SubmissionBatch {BatchId} not found", batchId);
             return false;
         }
 
@@ -64,16 +62,11 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
             return;
         }
 
-        _logger.LogInformation("Creating {Count} submissions for batch {BatchId}",
-            message.StudentCodes.Count, message.SubmissionBatchId);
-
         var submissionRepo = _unitOfWork.Repository<Submission>();
         var submissions = message.StudentCodes.Select(studentCode =>
         {
-            // Get folder name from dictionary, fallback to studentCode if not found
-            var folderName = message.StudentFolders?.ContainsKey(studentCode) == true
-                ? message.StudentFolders[studentCode]
-                : studentCode;
+            var folderName = message.StudentFolders?.GetValueOrDefault(studentCode) ?? studentCode;
+            var githubUrl = message.GitHubUrls?.GetValueOrDefault(studentCode); // Get GitHub URL
 
             return new Submission
             {
@@ -81,14 +74,18 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
                 FolderName = folderName,
                 SubmissionBatchId = message.SubmissionBatchId,
                 Status = SubmissionStatus.Pending,
-                OriginalFileName = $"{folderName}/solution.zip"
+                OriginalFileName = $"{folderName}/solution.zip",
+                GitHubRepositoryUrl = githubUrl
             };
         }).ToList();
 
         await submissionRepo.AddRangeAsync(submissions, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Created {Count} submissions successfully", submissions.Count);
+        _logger.LogInformation(
+            "Created {Count} submissions with {GitHubCount} GitHub URLs",
+            submissions.Count,
+            submissions.Count(s => !string.IsNullOrEmpty(s.GitHubRepositoryUrl)));
     }
 
     private async Task HandleCleanBatchAsync(Guid batchId, CancellationToken cancellationToken)
@@ -140,7 +137,7 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
         await UpdateBatchStatusAsync(message.SubmissionBatchId, finalStatus, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Finished processing batch {BatchId}. Updated {Count} submissions with violations",
+        _logger.LogInformation("Finished processing batch {BatchId}. Updated {Count} submissions",
             message.SubmissionBatchId, updatedCount);
     }
 
@@ -166,7 +163,7 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
 
                 if (submission == null)
                 {
-                    _logger.LogWarning("Submission not found for student {StudentId} in batch {BatchId}", studentId, batchId);
+                    _logger.LogWarning("Submission not found for student {StudentId}", studentId);
                     continue;
                 }
 
@@ -184,13 +181,12 @@ public class ScanCompletedEventConsumer : IConsumer<ScanCompletedEvent>
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                 updatedCount++;
-                _logger.LogInformation("Saved {Count} violations for student {StudentId} (Folder: {FolderName})",
-                    violations.Count, studentId, submission.FolderName);
+                _logger.LogInformation("Saved {Count} violations for student {StudentId}",
+                    violations.Count, studentId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to save violations for student {StudentId} in batch {BatchId}",
-                    studentId, batchId);
+                _logger.LogError(ex, "Failed to save violations for student {StudentId}", studentId);
             }
         }
 

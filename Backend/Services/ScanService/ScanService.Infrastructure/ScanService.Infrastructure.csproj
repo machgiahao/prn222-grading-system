@@ -12,6 +12,8 @@
 	<PackageReference Include="Minio.AspNetCore" Version="6.0.1" />
 	<PackageReference Include="Qdrant.Client" Version="1.15.1" />
 	<PackageReference Include="SharpCompress" Version="0.41.0" />
+	<PackageReference Include="Octokit" Version="14.0.0" />
+	<PackageReference Include="LibGit2Sharp" Version="0.27.0" />
   </ItemGroup>
 
 </Project>

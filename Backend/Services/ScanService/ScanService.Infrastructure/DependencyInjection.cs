@@ -19,7 +19,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureService(this IServiceCollection services, IConfiguration configuration)
     {
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-
+        services.AddHttpClient();
         // Register Minio service
         services.ConfigureOptions<MinioConfigSetup>();
         services.AddSingleton<IMinioClient>(sp =>
@@ -51,7 +51,7 @@ public static class DependencyInjection
             var ollamaConfig = sp.GetRequiredService<IOptions<OllamaConfig>>().Value;
             client.BaseAddress = new Uri(ollamaConfig.BaseAddress);
         });
-
+        services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
 
         // Register Qdrant service
         services.ConfigureOptions<QdrantConfigSetup>();

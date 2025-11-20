@@ -13,8 +13,8 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
 
         builder.Property(x => x.StudentCode).IsRequired().HasMaxLength(50);
         builder.Property(x => x.OriginalFileName).IsRequired().HasMaxLength(255);
-        builder.Property(x => x.OriginalFileName).IsRequired().HasMaxLength(50);
         builder.Property(x => x.Status).IsRequired().HasMaxLength(50);
+        builder.Property(x => x.GitHubRepositoryUrl).IsRequired().HasMaxLength(500);
 
         builder.Property(x => x.ExaminerId).IsRequired(false);
 

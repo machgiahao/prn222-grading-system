@@ -29,7 +29,7 @@ public class SubmissionBatchUploadedConsumer : IConsumer<SubmissionBatchUploaded
     public async Task Consume(ConsumeContext<SubmissionBatchUploadedEvent> context)
     {
         var message = context.Message;
-        _logger.LogInformation("[ScanService] Receive new batch for scanning: {BatchId}", message.SubmissionBatchId);
+        _logger.LogInformation("[ScanService] Received batch for scanning: {BatchId}", message.SubmissionBatchId);
 
         ScanResult scanResult;
         try
@@ -57,10 +57,10 @@ public class SubmissionBatchUploadedConsumer : IConsumer<SubmissionBatchUploaded
             }
 
             _logger.LogInformation(
-                "Scan completed successfully. Violations: {ViolationCount}, Students: {StudentCount}, Folders: {FolderCount}",
+                "Scan completed: {ViolationCount} violations, {StudentCount} students, {GitHubCount} GitHub repos",
                 scanResult.Violations.Count,
                 scanResult.StudentCodes.Count,
-                scanResult.StudentFolders.Count);
+                scanResult.GitHubUrls.Count);
         }
         catch (Exception ex)
         {
@@ -79,14 +79,16 @@ public class SubmissionBatchUploadedConsumer : IConsumer<SubmissionBatchUploaded
                     }
                 },
                 StudentCodes = new List<string>(),
-                StudentFolders = new Dictionary<string, string>()
+                StudentFolders = new Dictionary<string, string>(),
+                GitHubUrls = new Dictionary<string, string>()
             };
         }
 
         _logger.LogInformation(
-            "Publishing ScanCompletedEvent for batch {BatchId} with {StudentCount} students",
+            "Publishing ScanCompletedEvent for batch {BatchId} with {StudentCount} students and {GitHubCount} GitHub URLs",
             message.SubmissionBatchId,
-            scanResult.StudentCodes.Count);
+            scanResult.StudentCodes.Count,
+            scanResult.GitHubUrls.Count);
 
         var scanCompletedEvent = new ScanCompletedEvent
         {
@@ -94,7 +96,8 @@ public class SubmissionBatchUploadedConsumer : IConsumer<SubmissionBatchUploaded
             UploadedByManagerId = message.UploadedByManagerId,
             Violations = scanResult.Violations,
             StudentCodes = scanResult.StudentCodes,
-            StudentFolders = scanResult.StudentFolders
+            StudentFolders = scanResult.StudentFolders,
+            GitHubUrls = scanResult.GitHubUrls 
         };
 
         await _eventPublisher.PublishAsync(scanCompletedEvent, context.CancellationToken);

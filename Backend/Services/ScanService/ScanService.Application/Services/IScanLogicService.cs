@@ -16,4 +16,5 @@ public class ScanResult
     public List<ScanResultItem> Violations { get; set; } = new();
     public List<string> StudentCodes { get; set; } = new();
     public Dictionary<string, string> StudentFolders { get; set; } = new();
+    public Dictionary<string, string> GitHubUrls { get; set; } = new();
 }

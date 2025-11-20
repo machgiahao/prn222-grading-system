@@ -184,7 +184,7 @@ public class Program
                     else
                     {
                         var logger = httpContext.RequestServices.GetRequiredService<ILogger<Program>>();
-                        logger.LogWarning("⚠️ No Authorization header found in request to {Path}",
+                        logger.LogWarning("No Authorization header found in request to {Path}",
                             httpContext.Request.Path);
                     }
                 });
