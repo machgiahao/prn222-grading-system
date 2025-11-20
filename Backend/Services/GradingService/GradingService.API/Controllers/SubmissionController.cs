@@ -26,6 +26,7 @@ public class SubmissionController : ControllerBase
 
     [HttpPost(ApiRoutes.Submissions.Upload)]
     [Authorize(Roles = SystemRoles.Manager)]
+    [RequestSizeLimit(524288000)]
     public async Task<IActionResult> UploadSubmissionBatch(
     [FromForm] UploadSubmissionBatchRequestDto request)
     {

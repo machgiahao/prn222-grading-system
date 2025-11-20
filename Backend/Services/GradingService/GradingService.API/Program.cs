@@ -3,6 +3,8 @@ using GradingService.Application.Hubs;
 using GradingService.Infrastructure;
 using GradingService.Infrastructure.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SharedLibrary.Common.Exceptions.Handler;
@@ -17,6 +19,18 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.Services.Configure<KestrelServerOptions>(options =>
+        {
+            options.Limits.MaxRequestBodySize = 524288000; // 500 MB
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10);
+        });
+        builder.Services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 524288000; // 500MB
+            options.ValueLengthLimit = 524288000;
+            options.MultipartHeadersLengthLimit = 524288000;
+        });
 
         builder.Services
             .AddApplicationService(builder.Configuration)
