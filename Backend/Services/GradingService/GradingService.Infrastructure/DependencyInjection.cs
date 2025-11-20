@@ -68,6 +68,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IFileStorageService, MinioStorageService>();
+        services.AddScoped<IUploadProgressService, UploadProgressService>();
         return services;
     }
 }

@@ -2,6 +2,7 @@
 
 public class UploadSubmissionBatchRequestDto
 {
-    public IFormFile RarFile { get; set; }
+    public IFormFile RarFile { get; set; } = null!;
     public Guid ExamId { get; set; }
+    public Guid BatchId { get; set; } = Guid.Empty;
 }

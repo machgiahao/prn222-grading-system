@@ -1,4 +1,5 @@
 using GradingService.Application;
+using GradingService.Application.Hubs;
 using GradingService.Infrastructure;
 using GradingService.Infrastructure.Context;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -23,7 +24,13 @@ public class Program
 
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-
+        // ===== SignalR Configuration =====
+        builder.Services.AddSignalR(options =>
+        {
+            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+            options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+            options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+        });
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -42,6 +49,20 @@ public class Program
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true
+            };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -77,7 +98,21 @@ public class Program
                 }
             });
         });
-
+        // ===== CORS for SignalR =====
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("SignalRPolicy", policy =>
+            {
+                policy.WithOrigins(
+                        "http://localhost:3000",
+                        "http://localhost:3001",
+                        "http://localhost:5173"
+                    )
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
+        });
         builder.Services.AddAuthorization();
         builder.Services.AddHealthChecks();
 
@@ -91,6 +126,7 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+        app.UseCors("SignalRPolicy");
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseUserContext();
@@ -98,7 +134,7 @@ public class Program
 
         app.MapControllers();
         app.MapHealthChecks("/health");
-
+        app.MapHub<UploadProgressHub>("/hubs/upload-progress");
         app.Run();
     }
 }
