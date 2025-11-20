@@ -59,7 +59,8 @@ public static class DependencyInjection
 
             var client = new MinioClient()
                 .WithEndpoint(endpoint)
-                .WithCredentials(minioConfig.AccessKey, minioConfig.SecretKey);
+                .WithCredentials(minioConfig.AccessKey, minioConfig.SecretKey)
+                .WithTimeout(600000); //10 minutes
 
             if (minioConfig.Endpoint.StartsWith("https"))
                 client = client.WithSSL();

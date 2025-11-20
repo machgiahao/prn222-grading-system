@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -12,7 +13,19 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.MaxRequestBodySize = 524288000; // 500MB
+            options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(10);
+        });
 
+        // config FormOptions
+        builder.Services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 524288000; // 500MB
+            options.ValueLengthLimit = 524288000;
+            options.MultipartHeadersLengthLimit = 524288000;
+        });
         // CORS
         builder.Services.AddCors(options =>
         {
