@@ -8,7 +8,9 @@ public class ExamDbContext : DbContext
 {
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<Semester> Semesters { get; set; }
-
+    public DbSet<Exam> Exam { get; set; }
+    public DbSet<Rubric> Rubric { get; set; }
+    public DbSet<RubricItem> RubricItem { get; set; }
     public ExamDbContext(DbContextOptions<ExamDbContext> options) : base(options)
     {
     }

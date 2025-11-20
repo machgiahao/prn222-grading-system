@@ -12,6 +12,8 @@ public static class ODataConfig
 
         builder.EntitySet<SubjectDto>("subjects");
         builder.EntitySet<SemesterDto>("semesters");
+        builder.EntitySet<ExamDto>("exams");
+        builder.EntitySet<RubricDto>("rubrics");
 
         return builder.GetEdmModel();
     }

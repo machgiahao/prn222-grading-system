@@ -22,6 +22,8 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<ISubjectRepository, SubjectRepository>();
         services.AddScoped<ISemesterRepository, SemesterRepository>();
+        services.AddScoped<IExamRepository, ExamRepository>();
+        services.AddScoped<IRubricRepository, RubricRepository>();
         services.AddDbContext<ExamDbContext>((sp, options) =>
         {
             var dbConfig = sp.GetRequiredService<IOptions<DatabaseConfig>>().Value;
