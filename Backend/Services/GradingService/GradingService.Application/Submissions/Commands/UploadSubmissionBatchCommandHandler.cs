@@ -38,7 +38,7 @@ public class UploadSubmissionBatchCommandHandler : ICommandHandler<UploadSubmiss
 
     public async Task<Guid> Handle(UploadSubmissionBatchCommand command, CancellationToken cancellationToken)
     {
-        var batchId = command.BatchId; 
+        var batchId = command.BatchId;
 
         try
         {
@@ -78,7 +78,7 @@ public class UploadSubmissionBatchCommandHandler : ICommandHandler<UploadSubmiss
             var batchRepository = _unitOfWork.Repository<SubmissionBatch>();
             var submissionBatch = new SubmissionBatch
             {
-                Id = batchId, // ✅ Set ID trước khi insert
+                Id = batchId,
                 RarFilePath = filePath,
                 Status = SubmissionStatus.Pending,
                 UploadedBy = command.ManagerId,
