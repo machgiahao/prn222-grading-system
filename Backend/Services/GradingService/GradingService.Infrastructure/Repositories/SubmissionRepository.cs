@@ -69,6 +69,8 @@ public class SubmissionRepository : Repository<Submission>, ISubmissionRepositor
             .Include(s => s.Batch)
                 .ThenInclude(b => b.Exam)
             .Include(s => s.Examiner)
+            .Include(s => s.Grades)
+                .ThenInclude(g => g.GradedRubricItems)  
             .AsQueryable();
 
         // Apply filters

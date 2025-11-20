@@ -6,4 +6,5 @@ namespace GradingService.Domain.Repositories;
 public interface IUserRepository : IRepository<User>
 {
     Task<List<User>> GetUsersFromListAsync(List<Guid> ids, CancellationToken cancellationToken);
+    Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default);
 }

@@ -27,7 +27,7 @@ public class SubmissionController : ControllerBase
     [HttpPost(ApiRoutes.Submissions.Upload)]
     [Authorize(Roles = SystemRoles.Manager)]
     public async Task<IActionResult> UploadSubmissionBatch(
-        [FromForm] UploadSubmissionBatchRequestDto request)
+    [FromForm] UploadSubmissionBatchRequestDto request)
     {
         if (request.RarFile == null || request.RarFile.Length == 0)
         {
@@ -38,6 +38,10 @@ public class SubmissionController : ControllerBase
             throw new BadRequestException("ExamId is required.");
         }
 
+        var batchId = request.BatchId != Guid.Empty
+            ? request.BatchId
+            : Guid.NewGuid();
+
         var managerId = Guid.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)
         );
@@ -45,11 +49,18 @@ public class SubmissionController : ControllerBase
         var command = new UploadSubmissionBatchCommand(
             request.RarFile,
             managerId,
-            request.ExamId
+            request.ExamId,
+            batchId 
         );
 
-        var batchId = await _sender.Send(command);
-        return Accepted(new { PendingBatchId = batchId });
+        await _sender.Send(command);
+
+        return Ok(new
+        {
+            BatchId = batchId, 
+            Message = "Upload started. Connect to SignalR hub to track progress.",
+            HubUrl = "/hubs/upload-progress"
+        });
     }
 
     [HttpPost(ApiRoutes.Submissions.Assign)]

@@ -36,4 +36,56 @@ public class UserRepository : IUserRepository
     {
         _context.Users.Add(user);
     }
+
+    public void Update(User user)
+    {
+        _context.Users.Update(user);
+    }
+
+    public void Delete(User user)
+    {
+        _context.Users.Remove(user);
+    }
+
+    public async Task<(List<User> Items, int TotalCount)> GetAllWithFiltersAsync(
+        int pageIndex,
+        int pageSize,
+        string? roleName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.Users
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+            .AsQueryable();
+
+        // Filter by role if provided
+        if (!string.IsNullOrWhiteSpace(roleName))
+        {
+            query = query.Where(u => u.UserRoles.Any(ur => ur.Role.Name == roleName));
+        }
+
+        // Get total count BEFORE pagination
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Apply ordering and pagination
+        var items = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip(pageIndex * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
+
+    public async Task<bool> EmailExistsAsync(string email, Guid? excludeUserId = null, CancellationToken cancellationToken = default)
+    {
+        var query = _context.Users.Where(u => u.Email == email);
+
+        if (excludeUserId.HasValue)
+        {
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        }
+
+        return await query.AnyAsync(cancellationToken);
+    }
 }

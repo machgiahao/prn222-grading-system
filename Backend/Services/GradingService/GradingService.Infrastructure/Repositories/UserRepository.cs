@@ -13,4 +13,9 @@ public class UserRepository : Repository<User>, IUserRepository
     {
         return await _dbSet.Where(u => ids.Contains(u.Id)).ToListAsync(cancellationToken);
     }
+
+    public async Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet.FindAsync(new object[] { id }, cancellationToken);
+    }
 }
