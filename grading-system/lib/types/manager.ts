@@ -4,7 +4,7 @@ export interface SubmissionUploadPayload {
 }
 
 export interface UploadResponse {
-    pendingBatchId: string;
+    batchId: string;
 }
 
 export interface AssignPayload {

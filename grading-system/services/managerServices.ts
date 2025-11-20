@@ -1,11 +1,11 @@
 import api from "@/axios/http";
-import { AutoAssignPayload, AssignPayload, SubmissionUploadPayload, AssignResponse, AutoAssignResponse, AllSubmissionParameters, GetAllExaminerParameters, AllSubmissionsResponse, GetAllExaminerResponse, GetAllExamResponse } from "@/lib/types/manager";
+import { AutoAssignPayload, AssignPayload, SubmissionUploadPayload, AssignResponse, AutoAssignResponse, AllSubmissionParameters, GetAllExaminerParameters, AllSubmissionsResponse, GetAllExaminerResponse, GetAllExamResponse, UploadResponse } from "@/lib/types/manager";
 
 const submissionBaseUrl = "/submissions";
 const userBaseUrl = "/users";
 const examBaseUrl = "/exams";
 
-export const uploadSubmissions = async (formData: SubmissionUploadPayload): Promise<void> => {
+export const uploadSubmissions = async (formData: SubmissionUploadPayload): Promise<UploadResponse> => {
   try {
     const response = await api.post(`${submissionBaseUrl}/upload`, formData, {
       headers: {
