@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertCircle, Award, Flag, LogOut, X } from "lucide-react";
+import { AlertCircle, Award, Eye, Flag, LogOut, X } from "lucide-react";
 import {
   ModerationQueueItem,
   VerifyViolationPayload,
@@ -162,6 +162,15 @@ export default function ModerationQueuePage() {
       </div>
     );
   }
+
+  const handleUrlGithubFile = (detail: string, linkgit: string) => {
+    const filePath = detail.match(/\(in file: (.+?)\)/)?.[1];
+    if (filePath) {
+      const githubUrl = "/" + filePath;
+      return linkgit + githubUrl;
+    }
+    return "None";
+  };
 
   const handleLogout = () => () => {
     logout();
@@ -336,9 +345,27 @@ export default function ModerationQueuePage() {
                               <Badge variant="outline" className="text-xs">
                                 {violation.violationType}
                               </Badge>
-                              <p className="text-muted-foreground flex-1">
-                                {violation.details}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-muted-foreground flex-4">
+                                  {violation.details}
+                                </p>
+                                <Eye
+                                  className="h-4 w-4 text-blue-500 cursor-pointer flex-shrink-0"
+                                  onClick={() => {
+                                    const url = handleUrlGithubFile(
+                                      violation.details,
+                                      item.gitHubRepositoryUrl
+                                    );
+                                    if (url !== "None") {
+                                      window.open(url, "_blank");
+                                    } else {
+                                      alert(
+                                        "File path not found in the violation details."
+                                      );
+                                    }
+                                  }}
+                                />
+                              </div>
                               {violation.similarityScore !== null && (
                                 <span className="text-orange-500 font-medium">
                                   {(violation.similarityScore * 100).toFixed(0)}

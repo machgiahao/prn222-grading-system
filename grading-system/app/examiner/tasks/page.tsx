@@ -180,7 +180,8 @@ export default function TasksPage() {
                     </div>
                     <Button
                       onClick={() => {
-                        window.location.href = `/examiner/${task.id}`;
+                        const encodedRepo = encodeURIComponent(task.gitHubRepositoryUrl || '');
+                        window.location.href = `/examiner/tasks/${task.id}?repo=${encodedRepo}`;
                       }}
                       className="ml-4 bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
                     >

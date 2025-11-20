@@ -11,7 +11,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!accessToken) {
-      router.push("/login");
+      router.push("/");
     }
   }, [router]);
 

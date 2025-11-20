@@ -3,4 +3,5 @@ export interface MyTask {
     studentCode: string;
     status: string;
     submissionBatchId: string;
+    gitHubRepositoryUrl: string;
 }

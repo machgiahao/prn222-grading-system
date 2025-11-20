@@ -84,7 +84,7 @@ export function Sidebar() {
       >
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-sidebar-border">
-            <h1 className="text-xl font-bold">GradingHub</h1>
+            <h1 className="text-xl font-bold">Grading System</h1>
             <p className="text-sm text-sidebar-foreground/70 mt-1 capitalize">
               {userTokenData?.email}
             </p>
