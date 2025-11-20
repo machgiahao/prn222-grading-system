@@ -58,4 +58,18 @@ public class SubmissionBatchRepository : Repository<SubmissionBatch> , ISubmissi
             .Include(b => b.Exam)
             .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
     }
+
+    public async Task<SubmissionBatch?> GetBatchForApprovalAsync(
+    Guid batchId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.SubmissionBatches
+            .Include(b => b.Exam)
+            .Include(b => b.Submissions)
+                .ThenInclude(s => s.Grades)
+                    .ThenInclude(g => g.GradedRubricItems)
+            .Include(b => b.Submissions)
+                .ThenInclude(s => s.Violations)
+            .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+    }
 }

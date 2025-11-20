@@ -1,13 +1,18 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
+import * as signalR from '@microsoft/signalr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, ClipboardList, AlertCircle, Loader2, FileText, Users, Search, X, FolderArchive } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, ClipboardList, AlertCircle, Loader2, FileText, Users, Search, X, FolderArchive, Award, LogOut, CheckCircle2 } from 'lucide-react';
 import { AllSubmissionParameters, Examiner, GetAllExamResponse, SubmissionData, SubmissionUploadPayload } from '@/lib/types/manager';
-import { autoAssign, getAllExam, getAllExaminers, getAllSubmissions } from '@/services/managerServices';
+import { autoAssign, getAllExam, getAllExaminers, getAllSubmissions, uploadSubmissions } from '@/services/managerServices';
 import SubmissionsTable from '@/components/SubmissionsTable';
+import { useAuth } from '@/context/auth-context';
+import { toast } from 'sonner';
 
 // Status options matching StatusBadge
 const statusOptions = [
@@ -21,7 +26,28 @@ const statusOptions = [
     { value: 'verified', label: 'Verified' },
 ];
 
+interface ProgressData {
+  batchId: string;
+  percentage: number;
+  stage: string;
+  message: string;
+  timestamp: string;
+}
+
+interface ErrorData {
+  batchId: string;
+  error: string;
+  timestamp: string;
+}
+
+interface CompletionData {
+  batchId: string;
+  totalSubmissions: number;
+  completedAt: string;
+}
+
 export default function ManagerDashboard() {
+    const { userTokenData, logout } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBatchId, setSelectedBatchId] = useState('');
     const [selectedStatus, setSelectedStatus] = useState('');
@@ -38,6 +64,16 @@ export default function ManagerDashboard() {
     const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null);
     const [uploadExamId, setUploadExamId] = useState('');
 
+    // SignalR Upload Progress States
+    const [uploadBatchId, setUploadBatchId] = useState<string | null>(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadStage, setUploadStage] = useState('');
+    const [uploadMessage, setUploadMessage] = useState('');
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadCompleted, setUploadCompleted] = useState(false);
+    const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+
     // Data states
     const [submissionData, setSubmissionData] = useState<SubmissionData[]>([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -46,17 +82,105 @@ export default function ManagerDashboard() {
     const [batches, setBatches] = useState<string[]>([]);
     const [examinerList, setExaminerList] = useState<Examiner[]>([]);
     const [examList, setExamList] = useState<GetAllExamResponse[]>([]);
-
+    const connectionUrl = process.env.NEXT_PUBLIC_SIGNALR_HUB_URL || "https://localhost:7002/hubs";
     // Pagination state
     const [pagination, setPagination] = useState({
         pageIndex: 1,
         pageSize: 10
     });
 
+    
+
+    useEffect(() => {
+        const accessToken = localStorage.getItem('accessToken');
+        console.log("accessToken", accessToken);
+        if (!uploadBatchId || !accessToken) {
+            console.log("NO uploadBatchId or accessToken");
+            return;
+        }
+    
+        const newConnection = new signalR.HubConnectionBuilder()
+            .withUrl(`${connectionUrl}/upload-progress?access_token=${accessToken}`)
+            .withAutomaticReconnect()
+            .configureLogging(signalR.LogLevel.Debug)
+            .build();
+    
+        newConnection.onclose((error) => {
+            console.log("🔌 Connection closed:", error);
+        });
+    
+        newConnection.onreconnecting((error) => {
+            console.log("🔄 Reconnecting:", error);
+        });
+    
+        newConnection.onreconnected((connectionId) => {
+            console.log("✅ Reconnected. ConnectionId:", connectionId);
+        });
+    
+        // ✅ Subscribe to progress events
+        newConnection.on('ReceiveProgress', (data: ProgressData) => {
+            console.log('📊 Progress:', data);
+            setUploadProgress(data.percentage);
+            setUploadStage(data.stage);
+            setUploadMessage(data.message);
+        });
+    
+        newConnection.on('ReceiveError', (data: ErrorData) => {
+            console.error('❌ Error:', data);
+            setUploadError(data.error);
+            setIsUploading(false);
+            toast.error(`Upload failed: ${data.error}`);
+        });
+    
+        newConnection.on('ReceiveCompletion', (data: CompletionData) => {
+            console.log('✅ Completed:', data);
+            setUploadCompleted(true);
+            setIsUploading(false);
+            toast.success(`Upload completed! Total submissions: ${data.totalSubmissions}`);
+            
+            // Refresh submissions after completion
+            fetchSubmissions({ 
+                pageIndex: pagination.pageIndex, 
+                pageSize: pagination.pageSize,
+                examId: selectedExamId || undefined,
+                submissionBatchId: selectedBatchId || undefined,
+                status: selectedStatus || undefined
+            });
+        });
+    
+        console.log("🎯 Preparing to join group for batch:", uploadBatchId);
+    
+        newConnection.start()
+            .then(() => {
+                console.log('✅ SignalR Connected, ConnectionId:', newConnection.connectionId);
+                return newConnection.invoke('JoinUploadGroup', uploadBatchId);
+            })
+            .then(() => {
+                console.log(`✅ Successfully joined group for batch: ${uploadBatchId}`);
+                setConnection(newConnection);
+            })
+            .catch(err => {
+                console.error('❌ SignalR connection error:', err);
+                toast.error('Failed to connect to progress tracker');
+            });
+    
+        return () => {
+            if (newConnection) {
+                console.log("🧹 Cleaning up SignalR connection for batch:", uploadBatchId);
+                // Gửi chỉ batchId (guid) cho LeaveUploadGroup
+                newConnection.invoke('LeaveUploadGroup', uploadBatchId)
+                    .then(() => console.log("✅ Left group successfully"))
+                    .catch(err => console.error("❌ Error leaving group:", err));
+                newConnection.stop().catch(console.error);
+            }
+        };
+    }, [uploadBatchId, userTokenData]);
+
     const fetchSubmissions = async (params: AllSubmissionParameters) => {
         setLoading(true);
         setError(null);
         try {
+            if(params.pageIndex < 1) params.pageIndex = 1;
             const data = await getAllSubmissions({
                 ...params,
                 pageIndex: params.pageIndex - 1 // Convert to 0-based for API
@@ -163,21 +287,30 @@ export default function ManagerDashboard() {
             console.log("File too large or dialog canceled");
             return;
         }
-        if (file && file.name.endsWith('.zip') || file.name.endsWith('.rar')) {
+        if (file && (file.name.endsWith('.zip') || file.name.endsWith('.rar'))) {
             setSelectedZipFile(file);
         } else if (file) {
-            alert('Please select a ZIP file');
+            alert('Please select a ZIP or RAR file');
         }
     };
 
-    // Handle upload submission
+    // Handle upload submission with SignalR tracking
     const handleUploadSubmission = async () => {
         if (!selectedZipFile || !uploadExamId) {
             alert('Please fill in all fields');
             return;
         }
 
-        const payload : SubmissionUploadPayload = {
+        // Reset upload states
+        setIsUploading(true);
+        setUploadError(null);
+        setUploadProgress(0);
+        setUploadStage('');
+        setUploadMessage('');
+        setUploadCompleted(false);
+        setUploadBatchId(null);
+
+        const payload: SubmissionUploadPayload = {
             RarFile: selectedZipFile,
             ExamId: uploadExamId,
         };
@@ -188,23 +321,21 @@ export default function ManagerDashboard() {
             ExamId: payload.ExamId
         });
 
-        // try {
-        //     await uploadSubmissions(payload);
-        //     alert('Upload successful!');
-        //     fetchSubmissions({ 
-        //         pageIndex: pagination.pageIndex, 
-        //         pageSize: pagination.pageSize,
-        //         examId: selectedExamId || undefined,
-        //         submissionBatchId: selectedBatchId || undefined,
-        //         status: selectedStatus || undefined
-        //     });
-        // } catch(err) {
-        //     console.error("Error uploading:", err);
-        //     alert("Error uploading. Please try again.");
-        // }
-
-        // Reset and close modal
-        handleCloseUploadModal();
+        try {
+            const result = await uploadSubmissions(payload);
+            
+            console.log('Upload started, BatchId:', result.batchId);
+            setUploadBatchId(result.batchId);
+            toast.success('Upload started! Tracking progress...');
+            
+            handleCloseUploadModal();
+            
+        } catch(err: any) {
+            console.error("Error uploading:", err);
+            setUploadError(err.message || 'Upload failed');
+            setIsUploading(false);
+            toast.error(err.message || 'Upload failed');
+        }
     };
 
     // Handle close upload modal
@@ -285,6 +416,17 @@ export default function ManagerDashboard() {
         });
     };
 
+    // Close upload progress bar
+    const handleCloseUploadProgress = () => {
+        setUploadBatchId(null);
+        setUploadProgress(0);
+        setUploadStage('');
+        setUploadMessage('');
+        setUploadError(null);
+        setIsUploading(false);
+        setUploadCompleted(false);
+    };
+
     const totalViolationCount = submissionData.filter(sub => sub.status === 'Flagged').length;
     const totalBatchCount = batches.length;
 
@@ -308,8 +450,35 @@ export default function ManagerDashboard() {
         fetchAllExams();
     }, []);
 
+    const handleLogout = () => {
+        logout();
+        window.location.href = "/";
+    };
+
     return (
-        <div className="min-h-screen bg-gray-900 p-8">
+        <div className="min-h-screen bg-gray-900 p-8 pb-24">
+            <header className="border-b border-zinc-800 bg-zinc-900">
+                <div className="container mx-auto px-4 py-4 max-w-6xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Award className="w-8 h-8 text-blue-500" />
+                            <div>
+                                <h1 className="text-xl font-bold text-white">Grading System</h1>
+                                <p className="text-sm text-gray-400">Manager Portal</p>
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            className="gap-2 bg-transparent border-zinc-700 text-white hover:bg-red-600 hover:border-red-600 transition-colors"
+                            onClick={handleLogout}
+                        >
+                            <LogOut className="h-4 w-4" />
+                            Logout
+                        </Button>
+                    </div>
+                </div>
+            </header>
+
             <div className="max-w-7xl mx-auto space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-100">Manager Dashboard</h1>
@@ -362,7 +531,7 @@ export default function ManagerDashboard() {
                         <p className="text-sm text-gray-400 mb-4">
                             Upload a RAR file containing student submissions to start a new grading batch.
                         </p>
-                        <Button className="w-full hover:cursor-pointer" onClick={() => setOpenUploadModal(true)}>
+                        <Button className="w-full" onClick={() => setOpenUploadModal(true)}>
                             <Upload size={18} className="mr-2" />
                             Upload New Batch
                         </Button>
@@ -393,11 +562,11 @@ export default function ManagerDashboard() {
                                     <Button
                                         onClick={() => setShowFilters(!showFilters)}
                                         variant="outline"
-                                        className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-gray-100 cursor-pointer"
+                                        className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-gray-100"
                                     >
                                         Filters {showFilters ? '▲' : '▼'}
                                     </Button>
-                                    <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                                    <Button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700">
                                         <Search className="h-4 w-4 mr-2" />
                                         Search
                                     </Button>
@@ -507,7 +676,7 @@ export default function ManagerDashboard() {
                             <div className="lg:col-span-3 flex items-start">
                                 <Button
                                     onClick={() => setOpenModal(true)}
-                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                                 >
                                     <Users className="mr-2 h-4 w-4" />
                                     Auto Assign Examiners
@@ -535,7 +704,7 @@ export default function ManagerDashboard() {
                         <div className="p-6 border-b border-gray-700">
                             <h2 className="text-xl font-bold text-gray-100">Upload Submission Batch</h2>
                             <p className="text-sm text-gray-400 mt-1">
-                                Upload a ZIP file with exam details to create a new submission batch
+                                Upload a ZIP/.rar file with exam details to create a new submission batch
                             </p>
                         </div>
                         
@@ -543,12 +712,12 @@ export default function ManagerDashboard() {
                             {/* File Upload Section */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    ZIP File *
+                                    ZIP/.rar File *
                                 </label>
                                 {!selectedZipFile ? (
                                     <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors">
                                         <Upload className="mx-auto h-12 w-12 text-gray-500 mb-3" />
-                                        <p className="text-gray-400 mb-2">Tải file ZIP</p>
+                                        <p className="text-gray-400 mb-2">Tải file ZIP/.rar</p>
                                         <input
                                             type="file"
                                             multiple={false}
@@ -629,6 +798,68 @@ export default function ManagerDashboard() {
                             </Button>
                         </div>
                     </div>
+                </div>
+            )}
+            
+            {(isUploading || uploadCompleted || uploadError) && (
+                <div className="fixed bottom-4 right-4 z-50 w-full max-w-md">
+                    <Card className="p-6 bg-gray-800 border-gray-700 shadow-2xl">
+                        <div className="space-y-4">
+                            {/* Header */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    {uploadCompleted ? (
+                                        <CheckCircle2 className="h-6 w-6 text-green-500" />
+                                    ) : uploadError ? (
+                                        <AlertCircle className="h-6 w-6 text-red-500" />
+                                    ) : (
+                                        <Loader2 className="h-6 w-6 text-blue-500 animate-spin" />
+                                    )}
+                                    <div>
+                                        <h3 className="font-semibold text-gray-100">
+                                            {uploadCompleted ? 'Upload Completed' : uploadError ? 'Upload Failed' : 'Uploading Batch'}
+                                        </h3>
+                                        <p className="text-sm text-gray-400">{uploadStage || 'Preparing...'}</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCloseUploadProgress}
+                                    className="text-gray-400 hover:text-gray-200 h-8 w-8 p-0"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {/* Progress Bar - chỉ hiện khi đang upload */}
+                            {isUploading && !uploadError && (
+                                <div className="space-y-2">
+                                    <Progress value={uploadProgress} className="h-2" />
+                                    <div className="flex justify-between text-xs text-gray-400">
+                                        <span className="truncate max-w-[250px]">{uploadMessage || 'Processing...'}</span>
+                                        <span className="ml-2 flex-shrink-0">{uploadProgress}%</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Error Message */}
+                            {uploadError && (
+                                <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+                                    <p className="text-sm text-red-300">{uploadError}</p>
+                                </div>
+                            )}
+
+                            {/* Success Message */}
+                            {uploadCompleted && (
+                                <div className="bg-green-900/30 border border-green-700 rounded-lg p-4">
+                                    <p className="text-sm text-green-300">
+                                        All submissions have been successfully uploaded and processed!
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
                 </div>
             )}
 
