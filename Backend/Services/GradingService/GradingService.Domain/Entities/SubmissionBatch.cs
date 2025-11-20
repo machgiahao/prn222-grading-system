@@ -12,4 +12,8 @@ public class SubmissionBatch : Entity<Guid>
     public Guid ExamId { get; set; }
     public virtual Exam Exam { get; set; }
     public virtual ICollection<Submission> Submissions { get; set; }
+
+    public bool IsApproved { get; set; }
+    public Guid? ApprovedBy { get; set; }
+    public DateTime? ApprovedAt { get; set; }
 }
