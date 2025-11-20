@@ -34,6 +34,11 @@ export function Sidebar() {
         label: "Semester Management",
         icon: Calendar,
       },
+      {
+        href: "/admin/subjects",
+        label: "Subject Management",
+        icon: FileText,
+      },
       { href: "/admin/reports", label: "Reports & Approval", icon: BarChart3 },
     ],
     Manager: [

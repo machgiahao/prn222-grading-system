@@ -1,7 +1,8 @@
 import api from "@/axios/http";
-import { Semester } from "@/lib/types/admin";
+import { Semester, Subject } from "@/lib/types/admin";
 
 const semesterBaseUrl = "/semester";
+const subjectBaseUrl = "/subject";
 
 export const getSemesters = async (): Promise<Semester[]> => {
   try {
@@ -38,6 +39,46 @@ export const updateSemester = async (
 export const deleteSemester = async (id: string): Promise<void> => {
   try {
     await api.delete(`${semesterBaseUrl}/${id}`);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getSubjects = async (): Promise<Subject[]> => {
+  try {
+    const response = await api.get<Subject[]>(subjectBaseUrl);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createSubject = async (
+  data: Omit<Subject, "id">
+): Promise<Subject> => {
+  try {
+    const response = await api.post<Subject>(subjectBaseUrl, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateSubject = async (
+  id: string,
+  data: Omit<Subject, "id">
+): Promise<Subject> => {
+  try {
+    const response = await api.put<Subject>(`${subjectBaseUrl}/${id}`, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteSubject = async (id: string): Promise<void> => {
+  try {
+    await api.delete(`${subjectBaseUrl}/${id}`);
   } catch (error) {
     throw error;
   }

@@ -3,3 +3,9 @@ export interface Semester {
   semesterCode: string;
   semesterName: string;
 }
+
+export interface Subject {
+  id: string;
+  subjectCode: string;
+  subjectName: string;
+}
