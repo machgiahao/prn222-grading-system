@@ -55,4 +55,48 @@ public class SubmissionRepository : Repository<Submission>, ISubmissionRepositor
             .Include(s => s.Violations)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<(List<Submission> Items, int TotalCount)> GetAllWithFiltersAsync(
+        int pageIndex,
+        int pageSize,
+        Guid? examId = null,
+        Guid? submissionBatchId = null,
+        string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Base query with all includes
+        var query = _context.Submissions
+            .Include(s => s.Batch)
+                .ThenInclude(b => b.Exam)
+            .Include(s => s.Examiner)
+            .AsQueryable();
+
+        // Apply filters
+        if (examId.HasValue)
+        {
+            query = query.Where(s => s.Batch.ExamId == examId.Value);
+        }
+
+        if (submissionBatchId.HasValue)
+        {
+            query = query.Where(s => s.SubmissionBatchId == submissionBatchId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(s => s.Status == status);
+        }
+
+        // Get total count BEFORE pagination
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Apply ordering and pagination
+        var items = await query
+            .OrderByDescending(s => s.CreatedAt)
+            .Skip(pageIndex * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return (items, totalCount);
+    }
 }

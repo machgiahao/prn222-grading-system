@@ -6,4 +6,5 @@ public class SubmissionTaskDto
     public string StudentCode { get; set; }
     public string Status { get; set; }
     public Guid SubmissionBatchId { get; set; }
+    public string? GitHubRepositoryUrl { get; set; }
 }
