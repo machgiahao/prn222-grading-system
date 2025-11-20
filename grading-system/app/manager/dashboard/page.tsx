@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, ClipboardList, AlertCircle, Loader2, FileText, Users, Search, X, FolderArchive } from 'lucide-react';
+import { Upload, ClipboardList, AlertCircle, Loader2, FileText, Users, Search, X, FolderArchive, Award, LogOut } from 'lucide-react';
 import { AllSubmissionParameters, Examiner, GetAllExamResponse, SubmissionData, SubmissionUploadPayload } from '@/lib/types/manager';
-import { autoAssign, getAllExam, getAllExaminers, getAllSubmissions } from '@/services/managerServices';
+import { autoAssign, getAllExam, getAllExaminers, getAllSubmissions, uploadSubmissions } from '@/services/managerServices';
 import SubmissionsTable from '@/components/SubmissionsTable';
+import { useAuth } from '@/context/auth-context';
 
 // Status options matching StatusBadge
 const statusOptions = [
@@ -46,6 +47,7 @@ export default function ManagerDashboard() {
     const [batches, setBatches] = useState<string[]>([]);
     const [examinerList, setExaminerList] = useState<Examiner[]>([]);
     const [examList, setExamList] = useState<GetAllExamResponse[]>([]);
+    const { logout } = useAuth();
 
     // Pagination state
     const [pagination, setPagination] = useState({
@@ -57,6 +59,7 @@ export default function ManagerDashboard() {
         setLoading(true);
         setError(null);
         try {
+            if(params.pageIndex < 1) params.pageIndex = 1;
             const data = await getAllSubmissions({
                 ...params,
                 pageIndex: params.pageIndex - 1 // Convert to 0-based for API
@@ -188,20 +191,20 @@ export default function ManagerDashboard() {
             ExamId: payload.ExamId
         });
 
-        // try {
-        //     await uploadSubmissions(payload);
-        //     alert('Upload successful!');
-        //     fetchSubmissions({ 
-        //         pageIndex: pagination.pageIndex, 
-        //         pageSize: pagination.pageSize,
-        //         examId: selectedExamId || undefined,
-        //         submissionBatchId: selectedBatchId || undefined,
-        //         status: selectedStatus || undefined
-        //     });
-        // } catch(err) {
-        //     console.error("Error uploading:", err);
-        //     alert("Error uploading. Please try again.");
-        // }
+        try {
+            await uploadSubmissions(payload);
+            alert('Upload successful!');
+            fetchSubmissions({ 
+                pageIndex: pagination.pageIndex, 
+                pageSize: pagination.pageSize,
+                examId: selectedExamId || undefined,
+                submissionBatchId: selectedBatchId || undefined,
+                status: selectedStatus || undefined
+            });
+        } catch(err) {
+            console.error("Error uploading:", err);
+            alert("Error uploading. Please try again.");
+        }
 
         // Reset and close modal
         handleCloseUploadModal();
@@ -308,8 +311,34 @@ export default function ManagerDashboard() {
         fetchAllExams();
     }, []);
 
+    const handleLogout = () => () => {
+        logout();
+        window.location.href = "/";
+      };
+
     return (
         <div className="min-h-screen bg-gray-900 p-8">
+            <header className="border-b border-zinc-800 bg-zinc-900">
+                    <div className="container mx-auto px-4 py-4 max-w-6xl">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Award className="w-8 h-8 text-blue-500" />
+                          <div>
+                            <h1 className="text-xl font-bold text-white">Grading System</h1>
+                            <p className="text-sm text-gray-400">Manager Portal</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="gap-2 bg-transparent border-zinc-700 text-white hover:bg-red-600 hover:border-red-600 !text-white cursor-pointer transition-colors"
+                          onClick={handleLogout()}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Logout
+                        </Button>
+                      </div>
+                    </div>
+                  </header>
             <div className="max-w-7xl mx-auto space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-100">Manager Dashboard</h1>

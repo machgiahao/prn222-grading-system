@@ -28,6 +28,10 @@ export default function ModerationQueuePage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchBy, setSearchBy] = useState<"studentCode" | "batchName">(
+    "studentCode"
+  );
   const [verificationProgress, setVerificationProgress] = useState<string[]>(
     []
   );
@@ -183,6 +187,18 @@ export default function ModerationQueuePage() {
     0
   );
 
+  const filteredQueueList = queueList
+    .filter((item) => {
+      if (!searchTerm.trim()) return true; 
+
+      const searchLower = searchTerm.trim().toLowerCase();
+      const targetValue =
+        searchBy === "studentCode" ? item.studentCode : item.batchName;
+
+      return targetValue.toLowerCase().includes(searchLower);
+    });
+
+
   return (
     <div className="min-h-screen bg-black text-white">
       <header className="border-b border-zinc-800 bg-zinc-900">
@@ -265,16 +281,40 @@ export default function ModerationQueuePage() {
                 </Button>
               </div>
 
+              <div className="flex gap-3 mb-6">
+                <input
+                  type="text"
+                  placeholder={`Search by ${
+                    searchBy === "studentCode" ? "Student Code" : "Batch Name"
+                  }...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                />
+                <select
+                  value={searchBy}
+                  onChange={(e) =>
+                    setSearchBy(e.target.value as "studentCode" | "batchName")
+                  }
+                  className="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white cursor-pointer"
+                >
+                  <option value="studentCode">Student Code</option>
+                  <option value="batchName">Batch Name</option>
+                </select>
+              </div>
+
               <div className="space-y-4">
-                {queueList.length === 0 ? (
+                {filteredQueueList.length === 0 ? (
                   <p className="text-muted-foreground italic">
-                    There are no submissions to verify.
+                    {searchTerm.trim()
+                      ? "No submissions found matching your search criteria."
+                      : "There are no submissions to verify."}
                   </p>
                 ) : (
-                  queueList.map((item) => (
+                  filteredQueueList.map((item) => (
                     <div
                       key={item.id}
-                      className="p-4 rounded-lg bg-background border border-border hover:border-destructive transition"
+                      className="p-4 rounded-lg bg-zinc-900 border border-border hover:border-destructive transition"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-3 flex-1">
@@ -301,7 +341,7 @@ export default function ModerationQueuePage() {
                               </p>
                               <Badge
                                 variant="destructive"
-                                className="flex items-center gap-1"
+                                className="flex items-center gap-1 font-bold"
                               >
                                 <AlertCircle className="h-3 w-3" />
                                 {item.status}
@@ -350,7 +390,7 @@ export default function ModerationQueuePage() {
                                   {violation.details}
                                 </p>
                                 <Eye
-                                  className="h-4 w-4 text-blue-500 cursor-pointer flex-shrink-0"
+                                  className="h-4 w-4 text-blue-500 cursor-pointer flex-shrink-0 hover:text-blue-400"
                                   onClick={() => {
                                     const url = handleUrlGithubFile(
                                       violation.details,
