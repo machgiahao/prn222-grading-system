@@ -5,22 +5,10 @@ const api = axios.create({
   withCredentials: true,
 });
 
-let isRefreshing = false;
-let failedQueue: {
+const failedQueue: {
   resolve: (value: unknown) => void;
   reject: (reason?: any) => void;
 }[] = [];
-
-const processQueue = (error: any, token = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  failedQueue = [];
-};
 
 api.interceptors.request.use(
   (config) => {
@@ -46,47 +34,42 @@ api.interceptors.response.use(
     }
 
     if (!originalRequest._retry) {
-      if (isRefreshing) {
-        return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject });
+      return new Promise(function (resolve, reject) {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            return api(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
-      }
+        .catch((err) => Promise.reject(err));
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+      // try {
+      //   // const { data } = await api.post("/authentication/token/refresh");
+      //   // const newToken = data.refreshToken;
 
-      try {
-        const { data } = await api.post("/authentication/token/refresh");
-        const newToken = data.refreshToken;
+      //   // localStorage.setItem("accessToken", newToken);
+      //   // api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+      //   // processQueue(null, newToken);
 
-        localStorage.setItem("accessToken", newToken);
-        api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
-        processQueue(null, newToken);
+      //   return api(originalRequest);
+      // } catch (refreshError) {
+      //   processQueue(refreshError, null);
+      //   const skipAuthRedirect =
+      //     (originalRequest as any)?.skipAuthRedirect === true ||
+      //     !!(originalRequest as any)?.headers?.["x-skip-auth-redirect"];
 
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        const skipAuthRedirect =
-          (originalRequest as any)?.skipAuthRedirect === true ||
-          !!(originalRequest as any)?.headers?.["x-skip-auth-redirect"];
+      //   if (skipAuthRedirect) {
+      //     return Promise.reject(refreshError);
+      //   }
 
-        if (skipAuthRedirect) {
-          return Promise.reject(refreshError);
-        }
-
-        // localStorage.removeItem("accessToken");
-        // if (typeof window !== "undefined") {
-        //   window.location.href = "/login";
-        // }
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+      //   // localStorage.removeItem("accessToken");
+      //   // if (typeof window !== "undefined") {
+      //   //   window.location.href = "/login";
+      //   // }
+      //   return Promise.reject(refreshError);
+      // } finally {
+      //   isRefreshing = false;
+      // }
     }
 
     return Promise.reject(error);

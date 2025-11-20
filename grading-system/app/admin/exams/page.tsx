@@ -1,27 +1,36 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { MainLayout } from '@/components/layout/main-layout';
-import { DataTable } from '@/components/data-table';
-import { Button } from '@/components/ui/button';
-import { FormDialog } from '@/components/form-dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useState } from "react";
+import { MainLayout } from "@/components/layout/main-layout";
+import { DataTable } from "@/components/data-table";
+import { Button } from "@/components/ui/button";
+import { FormDialog } from "@/components/form-dialog";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function ExamsPage() {
   const [exams, setExams] = useState([
-    { id: '1', code: 'CS101', name: 'Lập trình C++', subject: 'Công nghệ thông tin' },
-    { id: '2', code: 'CS102', name: 'Data Structures', subject: 'Công nghệ thông tin' },
-    { id: '3', code: 'MATH101', name: 'Giải tích', subject: 'Toán' },
+    {
+      id: "1",
+      code: "CS101",
+      name: "Lập trình C++",
+      subject: "Công nghệ thông tin",
+    },
+    {
+      id: "2",
+      code: "CS102",
+      name: "Data Structures",
+      subject: "Công nghệ thông tin",
+    },
+    { id: "3", code: "MATH101", name: "Giải tích", subject: "Toán" },
   ]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ code: '', name: '', subject: '' });
+  const [setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ code: "", name: "", subject: "" });
 
   const handleAdd = () => {
     if (formData.code && formData.name) {
       setExams([...exams, { id: String(Date.now()), ...formData }]);
-      setFormData({ code: '', name: '', subject: '' });
+      setFormData({ code: "", name: "", subject: "" });
     }
   };
 
@@ -30,12 +39,12 @@ export default function ExamsPage() {
   };
 
   const columns = [
-    { key: 'code', label: 'Mã bài thi' },
-    { key: 'name', label: 'Tên bài thi' },
-    { key: 'subject', label: 'Môn học' },
+    { key: "code", label: "Mã bài thi" },
+    { key: "name", label: "Tên bài thi" },
+    { key: "subject", label: "Môn học" },
     {
-      key: 'actions',
-      label: 'Hành động',
+      key: "actions",
+      label: "Hành động",
       render: (_: any, row: any) => (
         <div className="flex gap-2">
           <Button

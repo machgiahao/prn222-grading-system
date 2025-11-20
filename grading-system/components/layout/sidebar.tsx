@@ -12,6 +12,7 @@ import {
   CheckSquare,
   ClipboardList,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -28,7 +29,11 @@ export function Sidebar() {
       { href: "/admin/dashboard", label: "Dashboard", icon: BarChart3 },
       { href: "/admin/exams", label: "Exam Management", icon: BookOpen },
       { href: "/admin/rubrics", label: "Rubric Management", icon: FileText },
-      { href: "/admin/config", label: "System Configuration", icon: Users },
+      {
+        href: "/admin/semesters",
+        label: "Semester Management",
+        icon: Calendar,
+      },
       { href: "/admin/reports", label: "Reports & Approval", icon: BarChart3 },
     ],
     Manager: [

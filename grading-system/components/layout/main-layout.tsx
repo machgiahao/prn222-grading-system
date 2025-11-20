@@ -1,15 +1,14 @@
 "use client";
 
-import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const { accessToken } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
     if (!accessToken) {
       router.push("/");
     }

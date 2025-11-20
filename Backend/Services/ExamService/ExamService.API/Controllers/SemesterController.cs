@@ -11,7 +11,7 @@ namespace ExamService.API.Controllers;
 
 [ApiController]
 [Route(ApiRoutes.Semesters.Base)]
-[Authorize(Roles = SystemRoles.Admin)]
+//[Authorize(Roles = SystemRoles.Admin)]
 public class SemesterController : ControllerBase
 {
     private readonly IMediator _mediator;
