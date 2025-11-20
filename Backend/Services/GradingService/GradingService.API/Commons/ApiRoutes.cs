@@ -20,6 +20,7 @@ public static class ApiRoutes
         public const string GradingDetails = "{id}/grading-details";
         public const string ModerationQueue = "moderation-queue";
         public const string VerifyViolation = "verify-violation";
+        public const string ApproveBatch = "batch/{batchId}/approve";
     }
 
     public static class Grades

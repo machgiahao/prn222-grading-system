@@ -184,5 +184,27 @@ public class SubmissionController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost(ApiRoutes.Submissions.ApproveBatch)]
+    [Authorize(Roles = SystemRoles.Admin)]
+    public async Task<IActionResult> ApproveBatchResults(Guid batchId)
+    {
+        var adminIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(adminIdString, out Guid adminId))
+        {
+            throw new UnauthorizedException("User ID claim is missing or invalid in the token.");
+        }
+
+        var command = new ApproveBatchResultsCommand(batchId, adminId);
+
+        await _sender.Send(command);
+
+        return Ok(new
+        {
+            Message = "Batch results approved successfully.",
+            BatchId = batchId,
+            ApprovedBy = adminId,
+            ApprovedAt = DateTime.UtcNow
+        });
+    }
 
 }

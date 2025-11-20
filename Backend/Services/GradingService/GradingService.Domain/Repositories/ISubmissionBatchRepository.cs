@@ -14,4 +14,8 @@ public interface ISubmissionBatchRepository : IRepository<SubmissionBatch>
     Task<SubmissionBatch?> GetBatchWithSubmissionsAsync(
         Guid batchId,
         CancellationToken cancellationToken = default);
+
+    Task<SubmissionBatch?> GetBatchForApprovalAsync(
+        Guid batchId,
+        CancellationToken cancellationToken = default);
 }
