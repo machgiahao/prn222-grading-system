@@ -68,7 +68,8 @@ export function Sidebar() {
   const items = (key && menuItems[key]) || [];
 
   const handleLogout = () => {
-    router.push("/login");
+    localStorage.removeItem("accessToken");
+    router.push("/");
   };
 
   return (

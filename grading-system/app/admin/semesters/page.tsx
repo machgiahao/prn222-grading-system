@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import { FormDialog } from "@/components/form-dialog";
@@ -14,19 +14,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface Semester {
-  id: string;
-  semesterCode: string;
-  semesterName: string;
-}
+import { useToast } from "@/components/ui/use-toast";
+import { Semester } from "@/lib/types/admin";
+import {
+  createSemester,
+  deleteSemester,
+  getSemesters,
+  updateSemester,
+} from "@/services/adminService";
 
 export default function SemesterPage() {
-  const [semesters, setSemesters] = useState<Semester[]>([
-    { id: "1", semesterCode: "SU 22", semesterName: "22 SU 24" },
-    { id: "2", semesterCode: "FA 22", semesterName: "22 FA 24" },
-    { id: "3", semesterCode: "SP 23", semesterName: "23 SP 25" },
-  ]);
+  const { toast } = useToast();
+
+  const [semesters, setSemesters] = useState<Semester[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -36,19 +37,55 @@ export default function SemesterPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Load semesters on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getSemesters();
+        setSemesters(data);
+      } catch {
+        toast({
+          title: "Error",
+          description: "Failed to load semesters",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [toast]);
+
   const resetForm = () => {
     setFormData({ semesterCode: "", semesterName: "" });
     setEditingId(null);
   };
 
-  const handleAddSemester = () => {
-    if (formData.semesterCode && formData.semesterName) {
-      setSemesters([...semesters, { id: String(Date.now()), ...formData }]);
+  // CREATE
+  const handleAddSemester = async () => {
+    try {
+      await createSemester(formData);
+      const data = await getSemesters();
+      setSemesters(data);
+
+      toast({
+        title: "Success",
+        description: "Semester created successfully",
+      });
+
       resetForm();
       setIsDialogOpen(false);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to create semester",
+        variant: "destructive",
+      });
     }
   };
 
+  // OPEN EDIT DIALOG
   const handleEditSemester = (semester: Semester) => {
     setFormData({
       semesterCode: semester.semesterCode,
@@ -58,26 +95,54 @@ export default function SemesterPage() {
     setIsDialogOpen(true);
   };
 
-  const handleUpdateSemester = () => {
-    if (editingId && formData.semesterCode && formData.semesterName) {
-      setSemesters(
-        semesters.map((s) => (s.id === editingId ? { ...s, ...formData } : s))
-      );
+  // UPDATE
+  const handleUpdateSemester = async () => {
+    if (!editingId) return;
+
+    try {
+      await updateSemester(editingId, formData);
+      const data = await getSemesters();
+      setSemesters(data);
+
+      toast({
+        title: "Updated",
+        description: "Semester updated successfully",
+      });
+
       resetForm();
       setIsDialogOpen(false);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to update semester",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDeleteSemester = (id: string) => {
-    setSemesters(semesters.filter((s) => s.id !== id));
+  // DELETE
+  const handleDeleteSemester = async (id: string) => {
+    try {
+      await deleteSemester(id);
+      const data = await getSemesters();
+      setSemesters(data);
+
+      toast({
+        title: "Deleted",
+        description: "Semester deleted successfully",
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to delete semester",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = () => {
-    if (editingId) {
-      handleUpdateSemester();
-    } else {
-      handleAddSemester();
-    }
+    if (editingId) handleUpdateSemester();
+    else handleAddSemester();
   };
 
   return (
@@ -91,56 +156,54 @@ export default function SemesterPage() {
               Create, edit, and manage academic semesters
             </p>
           </div>
-          <FormDialog
-            title={editingId ? "Edit Semester" : "Add New Semester"}
-            trigger={
-              <Button
-                size="lg"
-                onClick={() => {
-                  resetForm();
-                  setIsDialogOpen(true);
-                }}
-              >
-                <Plus size={18} />
-                Add Semester
-              </Button>
-            }
-            opened={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
+
+          {/* Add Button */}
+          <Button
+            size="lg"
+            onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}
           >
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Semester Code</label>
-                <Input
-                  value={formData.semesterCode}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      semesterCode: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., SU 22"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Semester Name</label>
-                <Input
-                  value={formData.semesterName}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      semesterName: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 22 SU 24"
-                />
-              </div>
-              <Button onClick={handleSubmit} className="w-full">
-                {editingId ? "Update Semester" : "Add Semester"}
-              </Button>
-            </div>
-          </FormDialog>
+            <Plus size={18} />
+            Add Semester
+          </Button>
         </div>
+
+        {/* Dialog */}
+        <FormDialog
+          title={editingId ? "Edit Semester" : "Add New Semester"}
+          opened={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          trigger={<></>} // Dialog opens manually via button
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Semester Code</label>
+              <Input
+                value={formData.semesterCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, semesterCode: e.target.value })
+                }
+                placeholder="e.g., SU 22"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Semester Name</label>
+              <Input
+                value={formData.semesterName}
+                onChange={(e) =>
+                  setFormData({ ...formData, semesterName: e.target.value })
+                }
+                placeholder="e.g., 22 SU 24"
+              />
+            </div>
+
+            <Button onClick={handleSubmit} className="w-full">
+              {editingId ? "Update Semester" : "Add Semester"}
+            </Button>
+          </div>
+        </FormDialog>
 
         {/* Table */}
         <div className="border rounded-lg overflow-hidden">
@@ -153,11 +216,18 @@ export default function SemesterPage() {
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {semesters.length > 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-6">
+                    Loading semesters...
+                  </TableCell>
+                </TableRow>
+              ) : semesters.length > 0 ? (
                 semesters.map((semester) => (
                   <TableRow key={semester.id}>
-                    <TableCell className="font-medium">{semester.id}</TableCell>
+                    <TableCell>{semester.id}</TableCell>
                     <TableCell>{semester.semesterCode}</TableCell>
                     <TableCell>{semester.semesterName}</TableCell>
                     <TableCell className="text-right">
@@ -170,6 +240,7 @@ export default function SemesterPage() {
                           <Edit2 size={16} />
                           Edit
                         </Button>
+
                         <Button
                           variant="destructive"
                           size="sm"
