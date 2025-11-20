@@ -6,7 +6,7 @@ using SharedLibrary.Common.Repositories;
 
 namespace ExamService.Application.Rubrics.Commands
 {
-    public sealed record UpdateRubricItemCommand(Guid Id, string Criteria, double MaxScore) : ICommand<Guid>;
+    public sealed record UpdateRubricItemCommand(Guid rubricItemId, string Criteria, double MaxScore) : ICommand<Guid>;
 
     public class UpdateRubricItemCommandHandler : ICommandHandler<UpdateRubricItemCommand, Guid>
     {
@@ -22,8 +22,8 @@ namespace ExamService.Application.Rubrics.Commands
         public async Task<Guid> Handle(UpdateRubricItemCommand request, CancellationToken cancellationToken)
         {
             var repo = _unitOfWork.Repository<RubricItem>();
-            var item = await repo.GetByIdAsync(request.Id, cancellationToken);
-            if (item == null) throw new RubricItemNotFoundException(request.Id);
+            var item = await repo.GetByIdAsync(request.rubricItemId, cancellationToken);
+            if (item == null) throw new RubricItemNotFoundException(request.rubricItemId);
 
             _mapper.Map(request, item);
             repo.Update(item);

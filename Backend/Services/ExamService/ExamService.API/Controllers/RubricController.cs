@@ -68,17 +68,16 @@ public class RubricController : ODataController
     }
 
     [HttpPut(ApiRoutes.Rubrics.UpdateItem)]
-    public async Task<IActionResult> UpdateRubricItem(Guid id, [FromBody] UpdateRubricItemCommand command)
+    public async Task<IActionResult> UpdateRubricItem([FromBody] UpdateRubricItemCommand command)
     {
-        var actionCommand = command with { Id = id };
-        var result = await _mediator.Send(actionCommand);
+        var result = await _mediator.Send(command);
         return Ok(result);
     }
 
-    [HttpDelete(ApiRoutes.Rubrics.DeleteItem)]
-    public async Task<IActionResult> DeleteRubricItem(Guid id)
+    [HttpDelete(ApiRoutes.Rubrics.DeleteItem)] 
+    public async Task<IActionResult> DeleteRubricItem(Guid rubricId, Guid itemId)
     {
-        var command = new DeleteRubricItemCommand(id);
+        var command = new DeleteRubricItemCommand(rubricId, itemId);
         var result = await _mediator.Send(command);
         return Ok(result);
     }

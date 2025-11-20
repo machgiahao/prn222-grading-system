@@ -5,7 +5,7 @@ using SharedLibrary.Common.Repositories;
 
 namespace ExamService.Application.Rubrics.Commands
 {
-    public sealed record DeleteRubricItemCommand(Guid Id) : ICommand<Guid>;
+    public sealed record DeleteRubricItemCommand(Guid RubricId, Guid ItemId) : ICommand<Guid>;
 
     public class DeleteRubricItemCommandHandler : ICommandHandler<DeleteRubricItemCommand, Guid>
     {
@@ -19,12 +19,18 @@ namespace ExamService.Application.Rubrics.Commands
         public async Task<Guid> Handle(DeleteRubricItemCommand request, CancellationToken cancellationToken)
         {
             var repo = _unitOfWork.Repository<RubricItem>();
-            var item = await repo.GetByIdAsync(request.Id, cancellationToken);
-            if (item == null) throw new RubricItemNotFoundException(request.Id);
+
+            var item = await repo.GetByIdAsync(request.ItemId, cancellationToken);
+
+            if (item == null || item.RubricId != request.RubricId)
+            {
+                throw new RubricItemNotFoundException(request.ItemId);
+            }
 
             repo.Delete(item);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return request.Id;
+
+            return request.ItemId;
         }
     }
 }
