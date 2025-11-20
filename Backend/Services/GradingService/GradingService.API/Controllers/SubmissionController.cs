@@ -38,26 +38,22 @@ public class SubmissionController : ControllerBase
             throw new BadRequestException("ExamId is required.");
         }
 
-        var batchId = request.BatchId != Guid.Empty
-            ? request.BatchId
-            : Guid.NewGuid();
+        var batchId = Guid.NewGuid();
 
         var managerId = Guid.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
         var command = new UploadSubmissionBatchCommand(
             request.RarFile,
             managerId,
             request.ExamId,
-            batchId 
+            batchId
         );
-
         await _sender.Send(command);
-
         return Ok(new
         {
-            BatchId = batchId, 
+            BatchId = batchId,
             Message = "Upload started. Connect to SignalR hub to track progress.",
             HubUrl = "/hubs/upload-progress"
         });
