@@ -15,4 +15,5 @@ public class SubmissionDto
     public Guid? ExaminerId { get; set; }
     public string? ExaminerName { get; set; }
     public DateTime? AssignedAt { get; set; }
+    public double? TotalScore { get; set; }
 }

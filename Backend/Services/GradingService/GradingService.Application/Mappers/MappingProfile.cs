@@ -33,6 +33,11 @@ public class MappingProfile : Profile
                 src.Batch.Exam != null ? src.Batch.Exam.ExamCode : "Unknown"))
             .ForMember(dest => dest.ExaminerName, opt => opt.MapFrom(src =>
                 src.Examiner != null ? src.Examiner.Name : null))
-            .ForMember(dest => dest.AssignedAt, opt => opt.MapFrom(src => src.UpdatedAt));
+            .ForMember(dest => dest.AssignedAt, opt => opt.MapFrom(src => src.UpdatedAt))
+            .ForMember(dest => dest.TotalScore, opt => opt.MapFrom(src =>
+                src.Grades != null && src.Grades.Any()
+                    ? src.Grades.FirstOrDefault()!.TotalScore
+                    : (double?)null));
+
     }
 }

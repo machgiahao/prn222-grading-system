@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddMessageBroker(configuration, assembly);
         services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
         services.RegisterConsumer<ScanCompletedEventConsumer>();
+        services.RegisterConsumer<UserCreatedEventConsumer>();
+        services.RegisterConsumer<UserUpdatedEventConsumer>();
+        services.RegisterConsumer<UserDeletedEventConsumer>();
         return services;
     }
 }

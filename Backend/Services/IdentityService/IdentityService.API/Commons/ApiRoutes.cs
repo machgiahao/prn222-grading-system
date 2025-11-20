@@ -14,4 +14,12 @@ public static class ApiRoutes
         public const string Refresh = "refresh";
         public const string Logout = "logout";
     }
+
+    public static class Users
+    {
+        public const string Base = ApiRoutes.Base + "/users";
+        public const string GetById = "{id}";        
+        public const string Update = "{id}";      
+        public const string Delete = "{id}";
+    }
 }
