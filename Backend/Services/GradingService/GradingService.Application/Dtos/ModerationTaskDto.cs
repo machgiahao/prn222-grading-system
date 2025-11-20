@@ -6,6 +6,7 @@ public class ModerationTaskDto
     public Guid Id { get; set; }
     public string StudentCode { get; set; }
     public string Status { get; set; }
+    public string? GitHubRepositoryUrl { get; set; }
     public Guid SubmissionBatchId { get; set; }
     public string BatchName { get; set; } 
     public int ViolationCount { get; set; }

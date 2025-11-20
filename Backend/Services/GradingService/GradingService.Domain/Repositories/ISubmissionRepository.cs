@@ -10,4 +10,11 @@ public interface ISubmissionRepository : IRepository<Submission>
     Task<List<Submission>> GetAssignedTasksForExaminerAsync(Guid examinerId, CancellationToken cancellationToken);
     Task<List<Submission>> GetModerationQueueAsync(CancellationToken cancellationToken);
     Task<Submission?> GetByIdWithViolationsAsync(Guid submissionId, CancellationToken cancellationToken = default);
+    Task<(List<Submission> Items, int TotalCount)> GetAllWithFiltersAsync(
+       int pageIndex,
+       int pageSize,
+       Guid? examId = null,
+       Guid? submissionBatchId = null,
+       string? status = null,
+       CancellationToken cancellationToken = default);
 }

@@ -27,5 +27,12 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Violations, opt => opt.MapFrom(src => src.Violations));
 
         CreateMap<Violation, ViolationDetailDto>();
+        CreateMap<Submission, SubmissionDto>()
+            .ForMember(dest => dest.ExamId, opt => opt.MapFrom(src => src.Batch.ExamId))
+            .ForMember(dest => dest.ExamCode, opt => opt.MapFrom(src =>
+                src.Batch.Exam != null ? src.Batch.Exam.ExamCode : "Unknown"))
+            .ForMember(dest => dest.ExaminerName, opt => opt.MapFrom(src =>
+                src.Examiner != null ? src.Examiner.Name : null))
+            .ForMember(dest => dest.AssignedAt, opt => opt.MapFrom(src => src.UpdatedAt));
     }
 }

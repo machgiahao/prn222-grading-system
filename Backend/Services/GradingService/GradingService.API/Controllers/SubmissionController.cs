@@ -1,5 +1,6 @@
 ﻿using GradingService.API.Common.Constants;
 using GradingService.API.Dtos;
+using GradingService.Application.Dtos;
 using GradingService.Application.Submissions.Commands;
 using GradingService.Application.Submissions.Queries;
 using MediatR;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SharedLibrary.Common.Constants;
 using SharedLibrary.Common.Exceptions;
+using SharedLibrary.Common.Pagination;
 using System.Security.Claims;
 
 namespace GradingService.API.Controllers;
@@ -128,7 +130,7 @@ public class SubmissionController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("verify-violation")]
+    [HttpPost(ApiRoutes.Submissions.VerifyViolation)]
     [Authorize(Roles = SystemRoles.Moderator)]
     public async Task<IActionResult> VerifyViolation(
     [FromBody] VerifyViolationRequestDto request)
@@ -150,4 +152,29 @@ public class SubmissionController : ControllerBase
 
         return Ok(new { Message = "Violation verification processed." });
     }
+
+    [HttpGet]
+    [Authorize(Roles = SystemRoles.Manager)]
+    [ProducesResponseType(typeof(PaginatedResult<SubmissionDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllSubmissions(
+        [FromQuery] int pageIndex = 0,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] Guid? examId = null,
+        [FromQuery] Guid? submissionBatchId = null,
+        [FromQuery] string? status = null)
+    {
+        var paginationRequest = new PaginationRequest(pageIndex, pageSize);
+
+        var query = new GetAllSubmissionsQuery(
+            paginationRequest,
+            examId,
+            submissionBatchId,
+            status);
+
+        var result = await _sender.Send(query);
+
+        return Ok(result);
+    }
+
+
 }

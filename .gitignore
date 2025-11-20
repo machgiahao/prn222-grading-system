@@ -56,3 +56,5 @@ Backend/.vs/
 
 # Windows
 Thumbs.db
+
+**/appsettings*.json
