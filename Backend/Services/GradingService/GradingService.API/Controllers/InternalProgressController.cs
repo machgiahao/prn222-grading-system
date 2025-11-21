@@ -8,16 +8,24 @@ namespace GradingService.API.Controllers;
 public class InternalProgressController : ControllerBase
 {
     private readonly IUploadProgressService _progressService;
+    private readonly ILogger<InternalProgressController> _logger; // Add logger
 
-    public InternalProgressController(IUploadProgressService progressService)
+    public InternalProgressController(
+        IUploadProgressService progressService,
+        ILogger<InternalProgressController> logger) // Inject logger
     {
         _progressService = progressService;
+        _logger = logger;
     }
 
     [HttpPost("report")]
     public async Task<IActionResult> ReportProgress(
         [FromBody] ProgressReportRequest request)
     {
+        _logger.LogInformation(
+            "Received progress report from ScanService: {BatchId} - {Percentage}% - {Stage}",
+            request.BatchId, request.Percentage, request.Stage);
+
         await _progressService.ReportProgressAsync(
             request.BatchId,
             request.Percentage,
@@ -32,6 +40,10 @@ public class InternalProgressController : ControllerBase
     public async Task<IActionResult> ReportComplete(
         [FromBody] CompleteReportRequest request)
     {
+        _logger.LogInformation(
+            "Received completion report from ScanService: {BatchId} - {TotalSubmissions} submissions",
+            request.BatchId, request.TotalSubmissions);
+
         await _progressService.ReportCompletedAsync(
             request.BatchId,
             request.TotalSubmissions,
@@ -44,6 +56,10 @@ public class InternalProgressController : ControllerBase
     public async Task<IActionResult> ReportError(
         [FromBody] ErrorReportRequest request)
     {
+        _logger.LogError(
+            "Received error report from ScanService: {BatchId} - {Error}",
+            request.BatchId, request.Error);
+
         await _progressService.ReportErrorAsync(
             request.BatchId,
             request.Error,

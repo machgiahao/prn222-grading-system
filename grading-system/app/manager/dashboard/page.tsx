@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -71,6 +71,7 @@ export default function ManagerDashboard() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadCompleted, setUploadCompleted] = useState(false);
     const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Data states
     const [submissionData, setSubmissionData] = useState<SubmissionData[]>([]);
@@ -88,7 +89,8 @@ export default function ManagerDashboard() {
         pageIndex: 1,
         pageSize: 10
     });
-
+    const connectionRef = useRef<signalR.HubConnection | null>(null);
+    const shouldCleanupRef = useRef(false);
     //  SignalR Connection Setup
     useEffect(() => {
         const accessToken = localStorage.getItem('accessToken');
@@ -97,7 +99,7 @@ export default function ManagerDashboard() {
             console.log("Missing uploadBatchId or accessToken");
             return;
         }
-
+        shouldCleanupRef.current = false;
         const hubUrl = `${apiBaseUrl}/hubs/upload-progress`;
         console.log("🌐 Connecting to:", hubUrl);
 
@@ -145,13 +147,10 @@ export default function ManagerDashboard() {
                 
                 //  Refresh submissions immediately after upload completes
                 console.log('Refreshing submissions after upload completion...');
-                fetchSubmissions({ 
-                    pageIndex: pagination.pageIndex, 
-                    pageSize: pagination.pageSize,
-                    examId: selectedExamId || undefined,
-                    submissionBatchId: selectedBatchId || undefined,
-                    status: selectedStatus || undefined
-                });
+                setTimeout(() => {
+                    setPagination(prev => ({ ...prev, pageIndex: 1 }));
+                    setRefreshTrigger(prev => prev + 1);
+                }, 1000);
             }
         });
 
@@ -161,6 +160,7 @@ export default function ManagerDashboard() {
             setUploadError(data.error);
             setIsUploading(false);
             toast.error(`Upload failed: ${data.error}`);
+            shouldCleanupRef.current = true;
         });
 
         newConnection.on('ReceiveCompletion', (data: CompletionData) => {
@@ -170,13 +170,16 @@ export default function ManagerDashboard() {
             toast.success(`Processing completed! Total submissions: ${data.totalSubmissions}`);
             
             console.log('Refreshing submissions after scan completion...');
-            fetchSubmissions({ 
-                pageIndex: pagination.pageIndex, 
-                pageSize: pagination.pageSize,
-                examId: selectedExamId || undefined,
-                submissionBatchId: selectedBatchId || undefined,
-                status: selectedStatus || undefined
-            });
+            // Delay để đảm bảo backend đã lưu xong data
+            setTimeout(() => {
+                setPagination(prev => ({ ...prev, pageIndex: 1 }));
+                setRefreshTrigger(prev => prev + 1);
+            }, 1000);
+            
+            shouldCleanupRef.current = true;    
+            setTimeout(() => {
+                handleCloseUploadProgress();
+            }, 4000);
         });
 
         const startConnection = async (retries = 3) => {
@@ -205,22 +208,26 @@ export default function ManagerDashboard() {
 
         startConnection();
 
-        return () => {
-            if (newConnection) {
-                console.log("🧹 Cleaning up SignalR connection for batch:", uploadBatchId);
+            return () => {
+                if (!shouldCleanupRef.current) {
+                    console.log("⏳ Processing not completed, keeping connection alive");
+                    return;
+                }
+
+                console.log("Cleaning up SignalR connection for batch:", uploadBatchId);
                 
                 const cleanup = async () => {
                     try {
                         if (newConnection.state === signalR.HubConnectionState.Connected) {
                             await newConnection.invoke('LeaveUploadGroup', uploadBatchId);
-                            console.log(" Left group successfully");
+                            console.log("Left group successfully");
                         }
                     } catch (err) {
                         console.error("Error leaving group:", err);
                     } finally {
                         try {
                             await newConnection.stop();
-                            console.log(" Connection stopped");
+                            console.log("Connection stopped");
                         } catch (err) {
                             console.error("Error stopping connection:", err);
                         }
@@ -228,9 +235,8 @@ export default function ManagerDashboard() {
                 };
                 
                 cleanup();
-            }
-        };
-    }, [uploadBatchId]);
+            };
+        }, [uploadBatchId]);
 
     const fetchSubmissions = async (params: AllSubmissionParameters) => {
         setLoading(true);
@@ -442,7 +448,17 @@ export default function ManagerDashboard() {
         });
     };
 
-    const handleCloseUploadProgress = () => {
+    const handleCloseUploadProgress = async () => {
+        if (connection && connection.state === signalR.HubConnectionState.Connected) {
+            try {
+                await connection.invoke('LeaveUploadGroup', uploadBatchId);
+                await connection.stop();
+                console.log("Connection cleaned up after closing progress bar");
+            } catch (err) {
+                console.error("Error cleaning up connection:", err);
+            }
+        }
+
         setUploadBatchId(null);
         setUploadProgress(0);
         setUploadStage('');
@@ -450,6 +466,7 @@ export default function ManagerDashboard() {
         setUploadError(null);
         setIsUploading(false);
         setUploadCompleted(false);
+        setConnection(null); // Clear connection reference
     };
 
     const totalViolationCount = submissionData.filter(sub => sub.status === 'Flagged').length;
@@ -463,7 +480,7 @@ export default function ManagerDashboard() {
             submissionBatchId: selectedBatchId || undefined,
             status: selectedStatus || undefined
         });
-    }, [pagination.pageIndex, pagination.pageSize]);
+    }, [pagination.pageIndex, pagination.pageSize, refreshTrigger]);
 
     useEffect(() => {
         getBatches();
@@ -785,23 +802,47 @@ export default function ManagerDashboard() {
                                     )}
                                     <div>
                                         <h3 className="font-semibold text-gray-100">
-                                            {uploadCompleted ? 'Processing Completed' : uploadError ? 'Upload Failed' : uploadStage || 'Uploading...'}
+                                            {uploadCompleted 
+                                                ? 'Processing Completed' 
+                                                : uploadError 
+                                                ? 'Upload Failed' 
+                                                : uploadStage || 'Processing...'}
                                         </h3>
-                                        <p className="text-sm text-gray-400">{uploadMessage || 'Processing...'}</p>
+                                        <p className="text-sm text-gray-400">
+                                            {uploadMessage || 'Please wait...'}
+                                        </p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={handleCloseUploadProgress} className="text-gray-400 hover:text-gray-200 h-8 w-8 p-0">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={handleCloseUploadProgress} 
+                                    className="text-gray-400 hover:text-gray-200 h-8 w-8 p-0"
+                                    disabled={!uploadCompleted && !uploadError} // Disable khi đang process
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
 
+                            {/* Hiển thị progress bar cả khi upload 100% (scan vẫn chạy) */}
                             {!uploadCompleted && !uploadError && (
                                 <div className="space-y-2">
                                     <Progress value={uploadProgress} className="h-2" />
                                     <div className="flex justify-between text-xs text-gray-400">
-                                        <span className="truncate max-w-[250px]">{uploadMessage || 'Processing...'}</span>
-                                        <span className="ml-2 flex-shrink-0">{uploadProgress}%</span>
+                                        <span className="truncate max-w-[250px]">
+                                            {uploadMessage || 'Processing...'}
+                                        </span>
+                                        <span className="ml-2 flex-shrink-0">
+                                            {uploadProgress}%
+                                        </span>
                                     </div>
+                                    
+                                    {/* Hiển thị message khi upload done nhưng scan chưa xong */}
+                                    {uploadProgress === 100 && uploadStage === 'Complete' && (
+                                        <p className="text-xs text-yellow-400 text-center mt-2">
+                                            Upload completed. Scanning submissions...
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
