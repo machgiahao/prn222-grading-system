@@ -31,6 +31,9 @@ public static class DependencyInjection
         services.RegisterConsumer<UserCreatedEventConsumer>();
         services.RegisterConsumer<UserUpdatedEventConsumer>();
         services.RegisterConsumer<UserDeletedEventConsumer>();
+        services.RegisterConsumer<ExamCreatedEventConsumer>();
+        services.RegisterConsumer<ExamUpdatedEventConsumer>();
+        services.RegisterConsumer<ExamDeletedEventConsumer>();
         return services;
     }
 }

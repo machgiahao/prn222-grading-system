@@ -1,18 +1,4 @@
 services:
-  # PostgreSQL Service
-  postgres:
-    image: postgres:17
-    container_name: postgres_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Prn222GradingSystem
-    ports:
-      - "5432:5432"
-    volumes:
-      - pg-data:/var/lib/postgresql/data
-    networks:
-    - grading-system-network
     
   # RabbitMQ Service      
   rabbitmq:
@@ -67,6 +53,99 @@ services:
       - "11434:11434"
     networks:
       - grading-system-network
+
+# Identity Service
+  identity-service:
+    build:
+      context: .
+      dockerfile: Services/IdentityService/Dockerfile
+    container_name: identity-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - DatabaseConfig__ConnectionString=Host=postgres;Port=5432;Database=identity_db;Username=postgres;Password=postgres
+      - JwtSettings__Key=YourSuperSecretKeyThatIsAtLeast32CharactersLong
+      - JwtSettings__Issuer=GradingSystem
+      - JwtSettings__Audience=GradingSystemUsers
+      - JwtSettings__ExpiryInMinutes=60
+    ports:
+      - "5001:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - grading-network
+    restart: unless-stopped
+
+  # Grading Service
+  grading-service:
+    build:
+      context: .
+      dockerfile: Services/GradingService/Dockerfile
+    container_name: grading-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - DatabaseConfig__ConnectionString=Host=postgres;Port=5432;Database=grading_db;Username=postgres;Password=postgres
+      - DatabaseConfig__MaxRetryCount=3
+      - DatabaseConfig__CommandTimeout=30
+      - MinioConfig__Endpoint=http://minio:9000
+      - MinioConfig__AccessKey=minioadmin
+      - MinioConfig__SecretKey=minioadmin
+      - MinioConfig__BucketName=submissions
+      - RabbitMqConfig__Host=rabbitmq
+      - RabbitMqConfig__Port=5672
+      - RabbitMqConfig__Username=guest
+      - RabbitMqConfig__Password=guest
+    ports:
+      - "5002:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - grading-network
+    restart: unless-stopped
+
+  # Scan Service
+  scan-service:
+    build:
+      context: .
+      dockerfile: Services/ScanService/Dockerfile
+    container_name: scan-service
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - MinioConfig__Endpoint=http://minio:9000
+      - MinioConfig__AccessKey=minioadmin
+      - MinioConfig__SecretKey=minioadmin
+      - MinioConfig__BucketName=submissions
+      - OllamaConfig__BaseAddress=http://ollama:11434
+      - QdrantConfig__BaseAddress=http://qdrant:6333
+      - RabbitMqConfig__Host=rabbitmq
+      - RabbitMqConfig__Port=5672
+      - RabbitMqConfig__Username=guest
+      - RabbitMqConfig__Password=guest
+      - GradingServiceConfig__BaseAddress=http://grading-service:8080
+    ports:
+      - "5003:8080"
+    depends_on:
+      minio:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      grading-service:
+        condition: service_started
+    networks:
+      - grading-network
+    restart: unless-stopped
 
 networks:
   grading-system-network:

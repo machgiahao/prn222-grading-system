@@ -130,9 +130,7 @@ public class UploadSubmissionBatchCommandHandler : ICommandHandler<UploadSubmiss
                         cancellationToken);
                 }
                 catch
-                {
-                    // Ignore cleanup errors
-                }
+                {}
             }
 
             await _progressService.ReportErrorAsync(

@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SharedLibrary.Behaviors;
+using SharedLibrary.Common.Events;
+using SharedLibrary.MassTransit;
 
 namespace ExamService.Application;
 
@@ -19,6 +21,8 @@ public static class DependencyInjection
         });
         services.AddValidatorsFromAssembly(assembly);
         services.AddAutoMapper(assembly);
+        services.AddMessageBroker(configuration, assembly);
+        services.AddScoped<IEventPublisher, MassTransitEventPublisher>();
         return services;
     }
 }

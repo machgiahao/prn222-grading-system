@@ -3,7 +3,9 @@ using ExamService.Domain.Entities;
 using ExamService.Domain.Repositories;
 using FluentValidation;
 using SharedLibrary.Common.CQRS;
+using SharedLibrary.Common.Events;
 using SharedLibrary.Common.Repositories;
+using SharedLibrary.Contracts;
 
 namespace ExamService.Application.Exams.Commands
 {
@@ -24,12 +26,18 @@ namespace ExamService.Application.Exams.Commands
         private readonly IExamRepository _examRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly IEventPublisher _eventPublisher;
 
-        public CreateExamCommandHandler(IExamRepository examRepository, IUnitOfWork unitOfWork, IMapper mapper)
+        public CreateExamCommandHandler(
+            IExamRepository examRepository,
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            IEventPublisher eventPublisher)
         {
             _examRepository = examRepository;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _eventPublisher = eventPublisher;
         }
 
         public async Task<Guid> Handle(CreateExamCommand command, CancellationToken cancellationToken)
@@ -40,6 +48,16 @@ namespace ExamService.Application.Exams.Commands
             var exam = _mapper.Map<Exam>(command);
             _examRepository.Add(exam);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var integrationEvent = new ExamCreatedEvent
+            {
+                ExamId = exam.Id,
+                ExamCode = exam.ExamCode,
+                ForbiddenKeywords = exam.ForbiddenKeywords
+            };
+
+            await _eventPublisher.PublishAsync(integrationEvent, cancellationToken);
+
             return exam.Id;
         }
     }

@@ -10,6 +10,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Services", "Services", "{3F3B293F-8B0B-4977-8A69-1B4105631173}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ExamService", "ExamService", "{35810C94-314A-4226-B3F5-B4416B2198A2}"
+	ProjectSection(SolutionItems) = preProject
+		Services\ExamService\Dockerfile = Services\ExamService\Dockerfile
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamService.API", "Services\ExamService\ExamService.API\ExamService.API.csproj", "{C1CE53BB-14D0-9635-81B4-744EF820C215}"
 EndProject
@@ -20,6 +23,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExamService.Application", "Services\ExamService\ExamService.Application\ExamService.Application.csproj", "{F8747CD8-7F4E-3E44-70D2-21B34D9CB045}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "IdentityService", "IdentityService", "{84B030F4-F631-421D-985C-D5BBA8DCA9FF}"
+	ProjectSection(SolutionItems) = preProject
+		Services\IdentityService\Dockerfile = Services\IdentityService\Dockerfile
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityService.API", "Services\IdentityService\IdentityService.API\IdentityService.API.csproj", "{9649DA29-2683-6FA6-EB29-87E5F2A43FCD}"
 EndProject
@@ -35,6 +41,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GradingService", "GradingService", "{25F9BFB6-83D3-4498-875E-D321484989A4}"
+	ProjectSection(SolutionItems) = preProject
+		Services\GradingService\Dockerfile = Services\GradingService\Dockerfile
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GradingService.API", "Services\GradingService\GradingService.API\GradingService.API.csproj", "{3E8186E5-4C6B-A3D4-8B34-DF4C9FD7E5DD}"
 EndProject
@@ -45,6 +54,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GradingService.Infrastructure", "Services\GradingService\GradingService.Infrastructure\GradingService.Infrastructure.csproj", "{6E8B05B3-B636-A2A0-FD8E-8DCD51CC3168}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ScanService", "ScanService", "{FF8E7D7E-B139-43C0-967A-6EF845CB7433}"
+	ProjectSection(SolutionItems) = preProject
+		Services\ScanService\Dockerfile = Services\ScanService\Dockerfile
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScanService.Application", "Services\ScanService\ScanService.Application\ScanService.Application.csproj", "{012C6793-13C9-4692-8581-37E79AADEF86}"
 EndProject

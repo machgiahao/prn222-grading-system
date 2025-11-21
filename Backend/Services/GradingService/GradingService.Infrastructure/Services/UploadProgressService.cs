@@ -28,7 +28,7 @@ public class UploadProgressService : IUploadProgressService
         var groupName = $"batch-{batchId}";
 
         _logger.LogInformation(
-            "📊 Sending progress to group {GroupName}: {Percentage}% - {Stage}",
+            "Sending progress to group {GroupName}: {Percentage}% - {Stage}",
             groupName, percentage, stage);
 
         var progressData = new
@@ -46,11 +46,11 @@ public class UploadProgressService : IUploadProgressService
                 .Group(groupName)
                 .SendAsync("ReceiveProgress", progressData, cancellationToken);
 
-            _logger.LogInformation("✅ Progress sent successfully to group {GroupName}", groupName);
+            _logger.LogInformation("Progress sent successfully to group {GroupName}", groupName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Failed to send progress to group {GroupName}", groupName);
+            _logger.LogError(ex, "Failed to send progress to group {GroupName}", groupName);
         }
     }
 
@@ -61,7 +61,7 @@ public class UploadProgressService : IUploadProgressService
     {
         var groupName = $"batch-{batchId}";
 
-        _logger.LogError("❌ Sending error to group {GroupName}: {Error}", groupName, errorMessage);
+        _logger.LogError("Sending error to group {GroupName}: {Error}", groupName, errorMessage);
 
         var errorData = new
         {
@@ -78,7 +78,7 @@ public class UploadProgressService : IUploadProgressService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Failed to send error to group {GroupName}", groupName);
+            _logger.LogError(ex, "Failed to send error to group {GroupName}", groupName);
         }
     }
 
@@ -90,7 +90,7 @@ public class UploadProgressService : IUploadProgressService
         var groupName = $"batch-{batchId}";
 
         _logger.LogInformation(
-            "✅ Sending completion to group {GroupName}: {Count} submissions",
+            "Sending completion to group {GroupName}: {Count} submissions",
             groupName, totalSubmissions);
 
         var completionData = new
@@ -108,7 +108,7 @@ public class UploadProgressService : IUploadProgressService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Failed to send completion to group {GroupName}", groupName);
+            _logger.LogError(ex, "Failed to send completion to group {GroupName}", groupName);
         }
     }
 }
