@@ -68,4 +68,24 @@ public class MinioStorageService : IFileStorageService
         }
     }
 
+    public async Task DeleteAsync(
+        string filePath,
+        string bucketName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var removeObjectArgs = new RemoveObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(filePath);
+
+            await _minioClient.RemoveObjectAsync(removeObjectArgs, cancellationToken);
+
+            _logger.LogInformation("File deleted successfully: {BucketName}/{FilePath}", bucketName, filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete file from MinIO: {BucketName}/{FilePath}", bucketName, filePath);
+        }
+    }
 }

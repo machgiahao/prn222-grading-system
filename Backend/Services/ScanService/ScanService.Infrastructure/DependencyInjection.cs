@@ -18,8 +18,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureService(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpClient("GradingService", client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(2);
+        });
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
-        services.AddHttpClient();
         // Register Minio service
         services.ConfigureOptions<MinioConfigSetup>();
         services.AddSingleton<IMinioClient>(sp =>
@@ -68,11 +71,11 @@ public static class DependencyInjection
         services.AddScoped<IScanLogicService, ScanLogicService>();
 
         // Register services
+        services.AddScoped<IScanProgressService, ScanProgressService>();
         services.AddScoped<IArchiveExtractorService, ArchiveExtractorService>();
         services.AddScoped<ICodeViolationScanner, CodeViolationScanner>();
         services.AddScoped<IPlagiarismDetectionService, PlagiarismDetectionService>();
         services.AddScoped<IScanLogicService, ScanLogicService>();
-
         return services;
     }
 }

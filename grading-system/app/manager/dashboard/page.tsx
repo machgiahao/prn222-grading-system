@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +13,6 @@ import SubmissionsTable from '@/components/SubmissionsTable';
 import { useAuth } from '@/context/auth-context';
 import { toast } from 'sonner';
 
-// Status options matching StatusBadge
 const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'scanning', label: 'Scanning' },
@@ -82,63 +80,96 @@ export default function ManagerDashboard() {
     const [batches, setBatches] = useState<string[]>([]);
     const [examinerList, setExaminerList] = useState<Examiner[]>([]);
     const [examList, setExamList] = useState<GetAllExamResponse[]>([]);
-    const connectionUrl = process.env.NEXT_PUBLIC_SIGNALR_HUB_URL || "https://localhost:7002/hubs";
+    
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:7002";
+
     // Pagination state
     const [pagination, setPagination] = useState({
         pageIndex: 1,
         pageSize: 10
     });
 
-    
-
+    //  SignalR Connection Setup
     useEffect(() => {
         const accessToken = localStorage.getItem('accessToken');
-        console.log("accessToken", accessToken);
+        
         if (!uploadBatchId || !accessToken) {
-            console.log("NO uploadBatchId or accessToken");
+            console.log("Missing uploadBatchId or accessToken");
             return;
         }
-    
+
+        const hubUrl = `${apiBaseUrl}/hubs/upload-progress`;
+        console.log("🌐 Connecting to:", hubUrl);
+
         const newConnection = new signalR.HubConnectionBuilder()
-            .withUrl(`${connectionUrl}/upload-progress?access_token=${accessToken}`)
-            .withAutomaticReconnect()
+            .withUrl(hubUrl, {
+                accessTokenFactory: () => accessToken,
+                transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents,
+                skipNegotiation: false,
+            })
+            .withAutomaticReconnect([0, 2000, 5000, 10000])
             .configureLogging(signalR.LogLevel.Debug)
             .build();
-    
+
         newConnection.onclose((error) => {
             console.log("🔌 Connection closed:", error);
         });
-    
+
         newConnection.onreconnecting((error) => {
-            console.log("🔄 Reconnecting:", error);
+            console.log("Reconnecting:", error);
         });
-    
-        newConnection.onreconnected((connectionId) => {
-            console.log("✅ Reconnected. ConnectionId:", connectionId);
+
+        newConnection.onreconnected(async (connectionId) => {
+            console.log(" Reconnected. ConnectionId:", connectionId);
+            
+            //  Re-join group after reconnect
+            if (uploadBatchId) {
+                try {
+                    await newConnection.invoke('JoinUploadGroup', uploadBatchId);
+                    console.log(` Re-joined group for batch: ${uploadBatchId}`);
+                } catch (err) {
+                    console.error("Failed to re-join group:", err);
+                }
+            }
         });
-    
-        // ✅ Subscribe to progress events
+
+        //  Subscribe to progress events
         newConnection.on('ReceiveProgress', (data: ProgressData) => {
-            console.log('📊 Progress:', data);
+            console.log('Progress:', data);
             setUploadProgress(data.percentage);
             setUploadStage(data.stage);
             setUploadMessage(data.message);
+            
+            if (data.stage === 'Complete' && data.percentage === 100) {
+                toast.success(data.message);
+                
+                //  Refresh submissions immediately after upload completes
+                console.log('Refreshing submissions after upload completion...');
+                fetchSubmissions({ 
+                    pageIndex: pagination.pageIndex, 
+                    pageSize: pagination.pageSize,
+                    examId: selectedExamId || undefined,
+                    submissionBatchId: selectedBatchId || undefined,
+                    status: selectedStatus || undefined
+                });
+            }
         });
-    
+
+
         newConnection.on('ReceiveError', (data: ErrorData) => {
-            console.error('❌ Error:', data);
+            console.error('Error:', data);
             setUploadError(data.error);
             setIsUploading(false);
             toast.error(`Upload failed: ${data.error}`);
         });
-    
+
         newConnection.on('ReceiveCompletion', (data: CompletionData) => {
-            console.log('✅ Completed:', data);
+            console.log('Completed:', data);
             setUploadCompleted(true);
             setIsUploading(false);
-            toast.success(`Upload completed! Total submissions: ${data.totalSubmissions}`);
+            toast.success(`Processing completed! Total submissions: ${data.totalSubmissions}`);
             
-            // Refresh submissions after completion
+            console.log('Refreshing submissions after scan completion...');
             fetchSubmissions({ 
                 pageIndex: pagination.pageIndex, 
                 pageSize: pagination.pageSize,
@@ -147,34 +178,59 @@ export default function ManagerDashboard() {
                 status: selectedStatus || undefined
             });
         });
-    
-        console.log("🎯 Preparing to join group for batch:", uploadBatchId);
-    
-        newConnection.start()
-            .then(() => {
-                console.log('✅ SignalR Connected, ConnectionId:', newConnection.connectionId);
-                return newConnection.invoke('JoinUploadGroup', uploadBatchId);
-            })
-            .then(() => {
-                console.log(`✅ Successfully joined group for batch: ${uploadBatchId}`);
-                setConnection(newConnection);
-            })
-            .catch(err => {
-                console.error('❌ SignalR connection error:', err);
-                toast.error('Failed to connect to progress tracker');
-            });
-    
+
+        const startConnection = async (retries = 3) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    await newConnection.start();
+                    console.log(' SignalR Connected, ConnectionId:', newConnection.connectionId);
+                    
+                    await newConnection.invoke('JoinUploadGroup', uploadBatchId);
+                    console.log(` Successfully joined group for batch: ${uploadBatchId}`);
+                    
+                    setConnection(newConnection);
+                    return;
+                } catch (err) {
+                    console.error(`Connection attempt ${i + 1}/${retries} failed:`, err);
+                    
+                    if (i === retries - 1) {
+                        toast.error('Failed to connect to progress tracker');
+                        setIsUploading(false);
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                    }
+                }
+            }
+        };
+
+        startConnection();
+
         return () => {
             if (newConnection) {
                 console.log("🧹 Cleaning up SignalR connection for batch:", uploadBatchId);
-                // Gửi chỉ batchId (guid) cho LeaveUploadGroup
-                newConnection.invoke('LeaveUploadGroup', uploadBatchId)
-                    .then(() => console.log("✅ Left group successfully"))
-                    .catch(err => console.error("❌ Error leaving group:", err));
-                newConnection.stop().catch(console.error);
+                
+                const cleanup = async () => {
+                    try {
+                        if (newConnection.state === signalR.HubConnectionState.Connected) {
+                            await newConnection.invoke('LeaveUploadGroup', uploadBatchId);
+                            console.log(" Left group successfully");
+                        }
+                    } catch (err) {
+                        console.error("Error leaving group:", err);
+                    } finally {
+                        try {
+                            await newConnection.stop();
+                            console.log(" Connection stopped");
+                        } catch (err) {
+                            console.error("Error stopping connection:", err);
+                        }
+                    }
+                };
+                
+                cleanup();
             }
         };
-    }, [uploadBatchId, userTokenData]);
+    }, [uploadBatchId]);
 
     const fetchSubmissions = async (params: AllSubmissionParameters) => {
         setLoading(true);
@@ -183,7 +239,7 @@ export default function ManagerDashboard() {
             if(params.pageIndex < 1) params.pageIndex = 1;
             const data = await getAllSubmissions({
                 ...params,
-                pageIndex: params.pageIndex - 1 // Convert to 0-based for API
+                pageIndex: params.pageIndex - 1
             });
             setSubmissionData(data.data);
             setTotalCount(data.count);
@@ -224,16 +280,7 @@ export default function ManagerDashboard() {
         }
     }
 
-    // Handle search and filter
     const handleSearch = () => {
-        console.log('Searching with:', {
-            searchTerm,
-            batchId: selectedBatchId,
-            status: selectedStatus,
-            examId: selectedExamId,
-        });
-        
-        // Reset to page 1 when searching
         setPagination(prev => ({ ...prev, pageIndex: 1 }));
         
         fetchSubmissions({ 
@@ -245,7 +292,6 @@ export default function ManagerDashboard() {
         });
     };
 
-    // Clear all filters
     const handleClearFilters = () => {
         setSearchTerm('');
         setSelectedBatchId('');
@@ -253,17 +299,14 @@ export default function ManagerDashboard() {
         setSelectedExamId('');
         setPagination(prev => ({ ...prev, pageIndex: 1 }));
         
-        // Fetch without filters
         fetchSubmissions({ 
             pageIndex: 1, 
             pageSize: pagination.pageSize
         });
     };
 
-    // Check if any filter is active
     const hasActiveFilters = searchTerm || selectedBatchId || selectedStatus || selectedExamId;
 
-    // Handle examiner selection
     const handleExaminerSelection = (examinerId: string) => {
         setSelectedExaminers(prev => 
             prev.includes(examinerId) 
@@ -272,7 +315,6 @@ export default function ManagerDashboard() {
         );
     };
 
-    // Handle select all examiners
     const handleSelectAllExaminers = () => {
         if (selectedExaminers.length === examinerList.length) {
             setSelectedExaminers([]);
@@ -284,24 +326,23 @@ export default function ManagerDashboard() {
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) {
-            console.log("File too large or dialog canceled");
+            console.log("File selection canceled");
             return;
         }
         if (file && (file.name.endsWith('.zip') || file.name.endsWith('.rar'))) {
             setSelectedZipFile(file);
         } else if (file) {
-            alert('Please select a ZIP or RAR file');
+            toast.error('Please select a ZIP or RAR file');
         }
     };
 
-    // Handle upload submission with SignalR tracking
     const handleUploadSubmission = async () => {
         if (!selectedZipFile || !uploadExamId) {
-            alert('Please fill in all fields');
+            toast.error('Please fill in all fields');
             return;
         }
 
-        // Reset upload states
+        // Reset states
         setIsUploading(true);
         setUploadError(null);
         setUploadProgress(0);
@@ -314,12 +355,6 @@ export default function ManagerDashboard() {
             RarFile: selectedZipFile,
             ExamId: uploadExamId,
         };
-
-        console.log('Upload payload:', {
-            fileName: payload.RarFile.name,
-            fileSize: payload.RarFile.size,
-            ExamId: payload.ExamId
-        });
 
         try {
             const result = await uploadSubmissions(payload);
@@ -338,14 +373,12 @@ export default function ManagerDashboard() {
         }
     };
 
-    // Handle close upload modal
     const handleCloseUploadModal = () => {
         setSelectedZipFile(null);
         setUploadExamId('');
         setOpenUploadModal(false);
     };
 
-    // Format file size
     const formatFileSize = (bytes: number): string => {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -354,10 +387,9 @@ export default function ManagerDashboard() {
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     };
 
-    // Handle assign many
     const handleAssignMany = async () => {
         if (!modalSelectedBatchId || selectedExaminers.length === 0) {
-            alert('Please select a batch and at least one examiner');
+            toast.error('Please select a batch and at least one examiner');
             return;
         }
 
@@ -369,8 +401,7 @@ export default function ManagerDashboard() {
         try {
             const response = await autoAssign(payload);
             if(response.message){
-                alert(`Successfully assigned ${response.assignedSubmissionCount} submissions.`);
-                // Refresh submissions after assignment
+                toast.success(`Successfully assigned ${response.assignedSubmissionCount} submissions.`);
                 fetchSubmissions({ 
                     pageIndex: pagination.pageIndex, 
                     pageSize: pagination.pageSize,
@@ -379,34 +410,29 @@ export default function ManagerDashboard() {
                     status: selectedStatus || undefined
                 });
             }else{
-                alert("Failed to assign submissions.");
+                toast.error("Failed to assign submissions.");
             }
         } catch(err) {
             console.error("Error in auto assign:", err);
-            alert("Error assigning submissions. Please try again.");
+            toast.error("Error assigning submissions. Please try again.");
         }
         
-        // Reset and close modal
         setModalSelectedBatchId('');
         setSelectedExaminers([]);
         setOpenModal(false);
     };
 
-    // Reset modal state when closed
     const handleCloseModal = () => {
         setModalSelectedBatchId('');
         setSelectedExaminers([]);
         setOpenModal(false);
     };
 
-    // Handle page change
     const handlePageChange = (newPage: number) => {
         setPagination(prev => ({ ...prev, pageIndex: newPage }));
     };
 
-    // Handle assign success callback
     const handleAssignSuccess = () => {
-        // Refresh current page
         fetchSubmissions({ 
             pageIndex: pagination.pageIndex, 
             pageSize: pagination.pageSize,
@@ -416,7 +442,6 @@ export default function ManagerDashboard() {
         });
     };
 
-    // Close upload progress bar
     const handleCloseUploadProgress = () => {
         setUploadBatchId(null);
         setUploadProgress(0);
@@ -430,7 +455,6 @@ export default function ManagerDashboard() {
     const totalViolationCount = submissionData.filter(sub => sub.status === 'Flagged').length;
     const totalBatchCount = batches.length;
 
-    // Initial fetch
     useEffect(() => {
         fetchSubmissions({ 
             pageIndex: pagination.pageIndex, 
@@ -524,30 +548,26 @@ export default function ManagerDashboard() {
                     </Card>
                 </div>
 
-                {/* Actions */}
-                <div className="grid gap-6">
-                    <Card className="p-6 bg-gray-800 border-gray-700">
-                        <h3 className="font-bold mb-4 text-xl text-gray-100">Upload Submission Batch</h3>
-                        <p className="text-sm text-gray-400 mb-4">
-                            Upload a RAR file containing student submissions to start a new grading batch.
-                        </p>
-                        <Button className="w-full" onClick={() => setOpenUploadModal(true)}>
-                            <Upload size={18} className="mr-2" />
-                            Upload New Batch
-                        </Button>
-                    </Card>
-                </div>
+                {/* Upload Button */}
+                <Card className="p-6 bg-gray-800 border-gray-700">
+                    <h3 className="font-bold mb-4 text-xl text-gray-100">Upload Submission Batch</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                        Upload a RAR/ZIP file containing student submissions to start a new grading batch.
+                    </p>
+                    <Button className="w-full" onClick={() => setOpenUploadModal(true)}>
+                        <Upload size={18} className="mr-2" />
+                        Upload New Batch
+                    </Button>
+                </Card>
 
-                {/* Submissions Section */}
+                {/* Submissions Table Section */}
                 <section>
                     <h2 className="text-2xl font-bold mb-4 text-gray-100">List of Submissions</h2>
                     
-                    {/* Search and Filter Section */}
+                    {/* Search and Filters */}
                     <Card className="p-6 mb-4 bg-gray-800 border-gray-700">
                         <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-                            {/* Search section - 7 columns */}
                             <div className="lg:col-span-7 space-y-4">
-                                {/* Main search bar */}
                                 <div className="flex gap-2">
                                     <div className="relative flex-1">
                                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
@@ -572,78 +592,55 @@ export default function ManagerDashboard() {
                                     </Button>
                                 </div>
 
-                                {/* Filter options - shown when showFilters is true */}
                                 {showFilters && (
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 border-t border-gray-700">
-                                        {/* Exam Filter */}
                                         <div>
-                                            <label className="text-xs font-medium text-gray-400 mb-1 block">
-                                                Exam
-                                            </label>
+                                            <label className="text-xs font-medium text-gray-400 mb-1 block">Exam</label>
                                             <select
                                                 value={selectedExamId}
                                                 onChange={(e) => setSelectedExamId(e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="">All Exams</option>
                                                 {examList.map((exam) => (
-                                                    <option key={exam.id} value={exam.id}>
-                                                        {exam.examCode}
-                                                    </option>
+                                                    <option key={exam.id} value={exam.id}>{exam.examCode}</option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        {/* Batch ID Filter */}
                                         <div>
-                                            <label className="text-xs font-medium text-gray-400 mb-1 block">
-                                                Batch ID
-                                            </label>
+                                            <label className="text-xs font-medium text-gray-400 mb-1 block">Batch ID</label>
                                             <select
                                                 value={selectedBatchId}
                                                 onChange={(e) => setSelectedBatchId(e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="">All Batches</option>
                                                 {batches.map((batchId) => (
-                                                    <option key={batchId} value={batchId}>
-                                                        {batchId}
-                                                    </option>
+                                                    <option key={batchId} value={batchId}>{batchId}</option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        {/* Status Filter */}
                                         <div>
-                                            <label className="text-xs font-medium text-gray-400 mb-1 block">
-                                                Status
-                                            </label>
+                                            <label className="text-xs font-medium text-gray-400 mb-1 block">Status</label>
                                             <select
                                                 value={selectedStatus}
                                                 onChange={(e) => setSelectedStatus(e.target.value)}
-                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="">All Status</option>
                                                 {statusOptions.map((status) => (
-                                                    <option key={status.value} value={status.value}>
-                                                        {status.label}
-                                                    </option>
+                                                    <option key={status.value} value={status.value}>{status.label}</option>
                                                 ))}
                                             </select>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Active filters display */}
                                 {hasActiveFilters && (
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-xs font-medium text-gray-400">Active filters:</span>
-                                        {searchTerm && (
-                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-900/50 text-blue-300 border border-blue-700 rounded text-xs">
-                                                Examiner: {searchTerm}
-                                                <X className="h-3 w-3 cursor-pointer hover:text-blue-100" onClick={() => setSearchTerm('')} />
-                                            </span>
-                                        )}
                                         {selectedExamId && (
                                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-900/50 text-blue-300 border border-blue-700 rounded text-xs">
                                                 Exam: {examList.find(e => e.id === selectedExamId)?.examCode}
@@ -662,22 +659,15 @@ export default function ManagerDashboard() {
                                                 <X className="h-3 w-3 cursor-pointer hover:text-blue-100" onClick={() => setSelectedStatus('')} />
                                             </span>
                                         )}
-                                        <button
-                                            onClick={handleClearFilters}
-                                            className="text-xs text-red-400 hover:text-red-300 font-medium cursor-pointer"
-                                        >
+                                        <button onClick={handleClearFilters} className="text-xs text-red-400 hover:text-red-300 font-medium cursor-pointer">
                                             Clear all
                                         </button>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Auto Assign Button - 3 columns */}
                             <div className="lg:col-span-3 flex items-start">
-                                <Button
-                                    onClick={() => setOpenModal(true)}
-                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
-                                >
+                                <Button onClick={() => setOpenModal(true)} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
                                     <Users className="mr-2 h-4 w-4" />
                                     Auto Assign Examiners
                                 </Button>
@@ -685,7 +675,6 @@ export default function ManagerDashboard() {
                         </div>
                     </Card>
 
-                    {/* Submissions Table */}
                     <SubmissionsTable
                         data={submissionData}
                         totalCount={totalCount}
@@ -698,38 +687,33 @@ export default function ManagerDashboard() {
                 </section>
             </div>
 
+            {/* Upload Modal */}
             {openUploadModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl border border-gray-700">
                         <div className="p-6 border-b border-gray-700">
                             <h2 className="text-xl font-bold text-gray-100">Upload Submission Batch</h2>
                             <p className="text-sm text-gray-400 mt-1">
-                                Upload a ZIP/.rar file with exam details to create a new submission batch
+                                Upload a ZIP/RAR file with exam submissions
                             </p>
                         </div>
                         
                         <div className="p-6 space-y-6">
-                            {/* File Upload Section */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    ZIP/.rar File *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">ZIP/RAR File *</label>
                                 {!selectedZipFile ? (
                                     <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-gray-500 transition-colors">
                                         <Upload className="mx-auto h-12 w-12 text-gray-500 mb-3" />
-                                        <p className="text-gray-400 mb-2">Tải file ZIP/.rar</p>
+                                        <p className="text-gray-400 mb-2">Select file</p>
                                         <input
                                             type="file"
-                                            multiple={false}
+                                            accept=".zip,.rar"
                                             onChange={handleFileSelect}
                                             className="hidden"
                                             id="zip-upload"
                                         />
-                                        <label
-                                            htmlFor="zip-upload"
-                                            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
-                                        >
-                                            Chọn file
+                                        <label htmlFor="zip-upload" className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer">
+                                            Choose file
                                         </label>
                                     </div>
                                 ) : (
@@ -742,15 +726,12 @@ export default function ManagerDashboard() {
                                                     <p className="text-sm text-gray-400">{formatFileSize(selectedZipFile.size)}</p>
                                                 </div>
                                             </div>
-                                            <label
-                                                htmlFor="zip-upload-change"
-                                                className="px-3 py-1 text-sm bg-gray-600 text-gray-200 rounded hover:bg-gray-500 cursor-pointer"
-                                            >
-                                                Chọn lại
+                                            <label htmlFor="zip-upload-change" className="px-3 py-1 text-sm bg-gray-600 text-gray-200 rounded hover:bg-gray-500 cursor-pointer">
+                                                Change
                                             </label>
                                             <input
                                                 type="file"
-                                                accept=".zip"
+                                                accept=".zip,.rar"
                                                 onChange={handleFileSelect}
                                                 className="hidden"
                                                 id="zip-upload-change"
@@ -760,39 +741,26 @@ export default function ManagerDashboard() {
                                 )}
                             </div>
 
-                            {/* Exam Selection */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Exam *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Exam *</label>
                                 <select
                                     value={uploadExamId}
                                     onChange={(e) => setUploadExamId(e.target.value)}
-                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="">Select an exam</option>
                                     {examList.map((exam) => (
-                                        <option key={exam.id} value={exam.id}>
-                                            {exam.examCode}
-                                        </option>
+                                        <option key={exam.id} value={exam.id}>{exam.examCode}</option>
                                     ))}
                                 </select>
                             </div>
                         </div>
 
                         <div className="p-6 border-t border-gray-700 bg-gray-900 flex justify-end space-x-3">
-                            <Button
-                                variant="outline"
-                                onClick={handleCloseUploadModal}
-                                className="border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer"
-                            >
+                            <Button variant="outline" onClick={handleCloseUploadModal} className="border-gray-600 text-gray-300 hover:bg-gray-700">
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleUploadSubmission}
-                                disabled={!selectedZipFile || !uploadExamId}
-                                className="bg-blue-600 hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                            <Button onClick={handleUploadSubmission} disabled={!selectedZipFile || !uploadExamId} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
                                 <Upload className="mr-2 h-4 w-4" />
                                 Upload
                             </Button>
@@ -801,11 +769,11 @@ export default function ManagerDashboard() {
                 </div>
             )}
             
-            {(isUploading || uploadCompleted || uploadError) && (
+            {/* Progress Bar */}
+            {uploadBatchId && (
                 <div className="fixed bottom-4 right-4 z-50 w-full max-w-md">
                     <Card className="p-6 bg-gray-800 border-gray-700 shadow-2xl">
                         <div className="space-y-4">
-                            {/* Header */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     {uploadCompleted ? (
@@ -817,23 +785,17 @@ export default function ManagerDashboard() {
                                     )}
                                     <div>
                                         <h3 className="font-semibold text-gray-100">
-                                            {uploadCompleted ? 'Upload Completed' : uploadError ? 'Upload Failed' : 'Uploading Batch'}
+                                            {uploadCompleted ? 'Processing Completed' : uploadError ? 'Upload Failed' : uploadStage || 'Uploading...'}
                                         </h3>
-                                        <p className="text-sm text-gray-400">{uploadStage || 'Preparing...'}</p>
+                                        <p className="text-sm text-gray-400">{uploadMessage || 'Processing...'}</p>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleCloseUploadProgress}
-                                    className="text-gray-400 hover:text-gray-200 h-8 w-8 p-0"
-                                >
+                                <Button variant="ghost" size="sm" onClick={handleCloseUploadProgress} className="text-gray-400 hover:text-gray-200 h-8 w-8 p-0">
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
 
-                            {/* Progress Bar - chỉ hiện khi đang upload */}
-                            {isUploading && !uploadError && (
+                            {!uploadCompleted && !uploadError && (
                                 <div className="space-y-2">
                                     <Progress value={uploadProgress} className="h-2" />
                                     <div className="flex justify-between text-xs text-gray-400">
@@ -843,18 +805,16 @@ export default function ManagerDashboard() {
                                 </div>
                             )}
 
-                            {/* Error Message */}
                             {uploadError && (
                                 <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
                                     <p className="text-sm text-red-300">{uploadError}</p>
                                 </div>
                             )}
 
-                            {/* Success Message */}
                             {uploadCompleted && (
                                 <div className="bg-green-900/30 border border-green-700 rounded-lg p-4">
                                     <p className="text-sm text-green-300">
-                                        All submissions have been successfully uploaded and processed!
+                                        All submissions have been successfully processed!
                                     </p>
                                 </div>
                             )}
@@ -863,19 +823,16 @@ export default function ManagerDashboard() {
                 </div>
             )}
 
-            {/* Auto Assign Modal - Dark Theme */}
+            {/* Auto Assign Modal */}
             {openModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
                     <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-gray-700">
                         <div className="p-6 border-b border-gray-700">
                             <h2 className="text-xl font-bold text-gray-100">Auto Assign Examiners</h2>
-                            <p className="text-sm text-gray-400 mt-1">
-                                Select a batch and examiners to assign submissions
-                            </p>
+                            <p className="text-sm text-gray-400 mt-1">Select a batch and examiners</p>
                         </div>
                         
                         <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
-                            {/* Batch Selection */}
                             <div>
                                 <h3 className="font-semibold text-gray-200 mb-3">Select Batch</h3>
                                 <div className="space-y-2">
@@ -897,14 +854,10 @@ export default function ManagerDashboard() {
                                 </div>
                             </div>
 
-                            {/* Examiners Selection */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="font-semibold text-gray-200">Select Examiners</h3>
-                                    <button
-                                        onClick={handleSelectAllExaminers}
-                                        className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer"
-                                    >
+                                    <button onClick={handleSelectAllExaminers} className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer">
                                         {selectedExaminers.length === examinerList.length ? 'Deselect All' : 'Select All'}
                                     </button>
                                 </div>
@@ -929,18 +882,10 @@ export default function ManagerDashboard() {
                         </div>
 
                         <div className="p-6 border-t border-gray-700 bg-gray-900 flex justify-end space-x-3">
-                            <Button
-                                className="hover:cursor-pointer border-gray-600 text-gray-300 hover:bg-gray-700"
-                                variant="outline"
-                                onClick={handleCloseModal}
-                            >
+                            <Button variant="outline" onClick={handleCloseModal} className="border-gray-600 text-gray-300 hover:bg-gray-700">
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleAssignMany}
-                                disabled={!modalSelectedBatchId || selectedExaminers.length === 0}
-                                className="bg-amber-600 hover:bg-amber-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                            <Button onClick={handleAssignMany} disabled={!modalSelectedBatchId || selectedExaminers.length === 0} className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50">
                                 Assign Many
                             </Button>
                         </div>

@@ -3,6 +3,7 @@ using System;
 using GradingService.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GradingService.Infrastructure.Migrations
 {
     [DbContext(typeof(GradingDbContext))]
-    partial class GradingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121020019_AddColumnIsApprove")]
+    partial class AddColumnIsApprove
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

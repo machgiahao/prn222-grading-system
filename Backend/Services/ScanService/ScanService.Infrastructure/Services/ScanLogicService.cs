@@ -14,19 +14,22 @@ public class ScanLogicService : IScanLogicService
     private readonly ICodeViolationScanner _codeScanner;
     private readonly IPlagiarismDetectionService _plagiarismDetector;
     private readonly IGitHubRepositoryService _gitHubService;
+    private readonly IScanProgressService _progressService; // ✅ ADD
 
     public ScanLogicService(
         ILogger<ScanLogicService> logger,
         IArchiveExtractorService archiveExtractor,
         ICodeViolationScanner codeScanner,
         IPlagiarismDetectionService plagiarismDetector,
-        IGitHubRepositoryService gitHubService)
+        IGitHubRepositoryService gitHubService,
+        IScanProgressService progressService) // ✅ ADD
     {
         _logger = logger;
         _archiveExtractor = archiveExtractor;
         _codeScanner = codeScanner;
         _plagiarismDetector = plagiarismDetector;
         _gitHubService = gitHubService;
+        _progressService = progressService; // ✅ ADD
     }
 
     public async Task<ScanResult> ScanRarFileAsync(
@@ -50,7 +53,12 @@ public class ScanLogicService : IScanLogicService
 
         try
         {
-            // Step 1: Extract and scan violations
+            // ✅ Stage 1: Extraction (0-30%)
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 0, "Scanning",
+                "Starting extraction...", default);
+
+            int processedCount = 0;
             var extractionResult = await _archiveExtractor.ExtractAndProcessAsync(
                 rarFileStream,
                 async (studentId, folderName, zipStream) =>
@@ -60,32 +68,29 @@ public class ScanLogicService : IScanLogicService
                     var studentFolderPath = Path.Combine(batchTempPath, folderName);
                     Directory.CreateDirectory(studentFolderPath);
 
-                    // Copy stream to MemoryStream first (RAR streams don't support Seek)
                     using var memoryStream = new MemoryStream();
                     await zipStream.CopyToAsync(memoryStream);
                     memoryStream.Position = 0;
 
-                    // Save solution.zip from MemoryStream
                     var zipFilePath = Path.Combine(studentFolderPath, "solution.zip");
                     using (var fileStream = File.Create(zipFilePath))
                     {
                         await memoryStream.CopyToAsync(fileStream);
                     }
 
-                    // Extract solution.zip contents
                     ZipFile.ExtractToDirectory(zipFilePath, studentFolderPath, overwriteFiles: true);
                     File.Delete(zipFilePath);
 
-                    // Scan violations from MemoryStream (reset position)
                     memoryStream.Position = 0;
-                    var scanResult = await _codeScanner.ScanZipAsync(studentId, memoryStream, forbiddenKeywords);
+                    var scanResult = await _codeScanner.ScanZipAsync(
+                        studentId, memoryStream, forbiddenKeywords);
                     violations.AddRange(scanResult.Violations);
 
                     if (!string.IsNullOrWhiteSpace(scanResult.SourceCode))
                     {
                         if (studentCodes.ContainsKey(studentId))
                         {
-                            _logger.LogWarning("Duplicate student {StudentId}, appending code", studentId);
+                            _logger.LogWarning("Duplicate student {StudentId}", studentId);
                             studentCodes[studentId] += scanResult.SourceCode;
                         }
                         else
@@ -93,14 +98,36 @@ public class ScanLogicService : IScanLogicService
                             studentCodes[studentId] = scanResult.SourceCode;
                         }
                     }
+
+                    // ✅ Report extraction progress
+                    processedCount++;
+                    var extractPercent = Math.Min(30, (processedCount * 30) / Math.Max(1, studentFolders.Count));
+                    await _progressService.ReportProgressAsync(
+                        submissionBatchId,
+                        extractPercent,
+                        "Scanning",
+                        $"Extracted {processedCount} submissions...",
+                        default);
                 });
 
             if (!extractionResult.Success)
             {
+                await _progressService.ReportErrorAsync(
+                    submissionBatchId,
+                    extractionResult.ErrorMessage,
+                    default);
                 return CreateErrorResult(CreateSystemError(extractionResult.ErrorMessage));
             }
 
-            // Step 2: Upload to GitHub (AFTER extraction completes)
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 30, "Scanning",
+                "Extraction completed", default);
+
+            // ✅ Stage 2: GitHub Upload (30-70%)
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 35, "GitHub Upload",
+                "Uploading to GitHub...", default);
+
             var githubTasks = new List<Task<(string StudentId, string Url)>>();
 
             foreach (var student in extractionResult.DetectedStudents)
@@ -109,17 +136,12 @@ public class ScanLogicService : IScanLogicService
                 var folderName = student.FolderName;
                 var studentFolderPath = Path.Combine(batchTempPath, folderName);
 
-                // Add task to list
                 var task = Task.Run(async () =>
                 {
                     try
                     {
                         var url = await _gitHubService.PushSubmissionToGitHubAsync(
-                            studentId,
-                            folderName,
-                            studentFolderPath,
-                            submissionBatchId);
-
+                            studentId, folderName, studentFolderPath, submissionBatchId);
                         return (studentId, url);
                     }
                     catch (Exception ex)
@@ -132,38 +154,71 @@ public class ScanLogicService : IScanLogicService
                 githubTasks.Add(task);
             }
 
-            // Wait for all GitHub uploads to complete BEFORE cleanup
             if (githubTasks.Any())
             {
                 _logger.LogInformation("⏳ Waiting for {Count} GitHub uploads...", githubTasks.Count);
+
                 var results = await Task.WhenAll(githubTasks);
+                int completedGitHub = 0;
 
                 foreach (var (studentId, url) in results)
                 {
                     if (!string.IsNullOrEmpty(url))
                     {
                         gitHubUrls[studentId] = url;
-                        _logger.LogInformation("✅ GitHub upload completed for {StudentId}", studentId);
+                        completedGitHub++;
+
+                        // ✅ Report GitHub progress
+                        var gitHubPercent = 35 + ((completedGitHub * 35) / githubTasks.Count);
+                        await _progressService.ReportProgressAsync(
+                            submissionBatchId,
+                            gitHubPercent,
+                            "GitHub Upload",
+                            $"Uploaded {completedGitHub}/{githubTasks.Count} to GitHub",
+                            default);
                     }
                 }
             }
 
-            // Step 3: Plagiarism Detection
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 70, "GitHub Upload",
+                "GitHub upload completed", default);
+
+            // ✅ Stage 3: Plagiarism Detection (70-95%)
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 75, "Plagiarism Check",
+                "Detecting plagiarism...", default);
+
             if (studentCodes.Any())
             {
                 var plagiarismViolations = await _plagiarismDetector.DetectPlagiarismAsync(
-                    studentCodes,
-                    collectionName);
+                    studentCodes, collectionName);
                 violations.AddRange(plagiarismViolations);
             }
+
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 95, "Plagiarism Check",
+                "Plagiarism check completed", default);
+
+            // ✅ Stage 4: Cleanup & Complete (95-100%)
+            await _progressService.ReportProgressAsync(
+                submissionBatchId, 98, "Finalizing",
+                "Cleaning up...", default);
+
+            await _gitHubService.CleanupLocalRepositoryAsync();
 
             _logger.LogInformation(
                 "Scan completed: {ViolationCount} violations, {StudentCount} students, {GitHubCount} GitHub repos",
                 violations.Count,
                 extractionResult.DetectedStudents.Count,
                 gitHubUrls.Count);
-            // Cleanup local repo after all pushes
-            await _gitHubService.CleanupLocalRepositoryAsync();
+
+            // ✅ Report completion
+            await _progressService.ReportCompletedAsync(
+                submissionBatchId,
+                extractionResult.DetectedStudents.Count,
+                default);
+
             return new ScanResult
             {
                 Violations = violations,
@@ -178,6 +233,12 @@ public class ScanLogicService : IScanLogicService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Critical scan error for batch {BatchId}", submissionBatchId);
+
+            await _progressService.ReportErrorAsync(
+                submissionBatchId,
+                ex.Message,
+                default);
+
             return CreateErrorResult(CreateSystemError(ex.Message));
         }
         finally
