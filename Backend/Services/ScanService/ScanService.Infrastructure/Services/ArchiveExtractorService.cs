@@ -124,11 +124,7 @@ public class ArchiveExtractorService : IArchiveExtractorService
     private bool IsJunkPath(string path) =>
         JunkPaths.Any(j => path.Contains(j, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// Extracts student ID (SE + 6 digits) and folder name from archive path
-    /// Example: "PRN222_SU25.../DanhPTSE184514/0/solution.zip" 
-    /// Returns: (StudentId: "SE184514", FolderName: "DanhPTSE184514")
-    /// </summary>
+    // Extracts student ID and folder name from the given path
     private (string StudentId, string FolderName) ExtractStudentInfo(string path)
     {
         try

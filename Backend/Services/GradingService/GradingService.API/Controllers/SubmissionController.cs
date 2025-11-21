@@ -162,7 +162,7 @@ public class SubmissionController : ControllerBase
     }
 
     [HttpGet]
-    [Authorize(Roles = SystemRoles.Manager)]
+    [Authorize(Roles = SystemRoles.AdminOrManager)]
     [ProducesResponseType(typeof(PaginatedResult<SubmissionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllSubmissions(
         [FromQuery] int pageIndex = 0,

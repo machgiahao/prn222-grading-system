@@ -14,7 +14,7 @@ public class ScanLogicService : IScanLogicService
     private readonly ICodeViolationScanner _codeScanner;
     private readonly IPlagiarismDetectionService _plagiarismDetector;
     private readonly IGitHubRepositoryService _gitHubService;
-    private readonly IScanProgressService _progressService; // ✅ ADD
+    private readonly IScanProgressService _progressService; 
 
     public ScanLogicService(
         ILogger<ScanLogicService> logger,
@@ -22,14 +22,14 @@ public class ScanLogicService : IScanLogicService
         ICodeViolationScanner codeScanner,
         IPlagiarismDetectionService plagiarismDetector,
         IGitHubRepositoryService gitHubService,
-        IScanProgressService progressService) // ✅ ADD
+        IScanProgressService progressService) 
     {
         _logger = logger;
         _archiveExtractor = archiveExtractor;
         _codeScanner = codeScanner;
         _plagiarismDetector = plagiarismDetector;
         _gitHubService = gitHubService;
-        _progressService = progressService; // ✅ ADD
+        _progressService = progressService; 
     }
 
     public async Task<ScanResult> ScanRarFileAsync(
@@ -37,7 +37,7 @@ public class ScanLogicService : IScanLogicService
         List<string> forbiddenKeywords,
         Guid submissionBatchId)
     {
-        _logger.LogInformation("🚀 Starting scan for batch {BatchId}", submissionBatchId);
+        _logger.LogInformation("Starting scan for batch {BatchId}", submissionBatchId);
 
         var violations = new List<ScanResultItem>();
         var studentCodes = new Dictionary<string, string>();
@@ -53,7 +53,7 @@ public class ScanLogicService : IScanLogicService
 
         try
         {
-            // ✅ Stage 1: Extraction (0-30%)
+            //Stage 1: Extraction (0-30%)
             await _progressService.ReportProgressAsync(
                 submissionBatchId, 0, "Scanning",
                 "Starting extraction...", default);
@@ -99,7 +99,7 @@ public class ScanLogicService : IScanLogicService
                         }
                     }
 
-                    // ✅ Report extraction progress
+                    //Report extraction progress
                     processedCount++;
                     var extractPercent = Math.Min(30, (processedCount * 30) / Math.Max(1, studentFolders.Count));
                     await _progressService.ReportProgressAsync(
@@ -123,7 +123,7 @@ public class ScanLogicService : IScanLogicService
                 submissionBatchId, 30, "Scanning",
                 "Extraction completed", default);
 
-            // ✅ Stage 2: GitHub Upload (30-70%)
+            //Stage 2: GitHub Upload (30-70%)
             await _progressService.ReportProgressAsync(
                 submissionBatchId, 35, "GitHub Upload",
                 "Uploading to GitHub...", default);
@@ -168,7 +168,7 @@ public class ScanLogicService : IScanLogicService
                         gitHubUrls[studentId] = url;
                         completedGitHub++;
 
-                        // ✅ Report GitHub progress
+                        //Report GitHub progress
                         var gitHubPercent = 35 + ((completedGitHub * 35) / githubTasks.Count);
                         await _progressService.ReportProgressAsync(
                             submissionBatchId,
@@ -184,7 +184,7 @@ public class ScanLogicService : IScanLogicService
                 submissionBatchId, 70, "GitHub Upload",
                 "GitHub upload completed", default);
 
-            // ✅ Stage 3: Plagiarism Detection (70-95%)
+            //Stage 3: Plagiarism Detection (70-95%)
             await _progressService.ReportProgressAsync(
                 submissionBatchId, 75, "Plagiarism Check",
                 "Detecting plagiarism...", default);
@@ -200,7 +200,7 @@ public class ScanLogicService : IScanLogicService
                 submissionBatchId, 95, "Plagiarism Check",
                 "Plagiarism check completed", default);
 
-            // ✅ Stage 4: Cleanup & Complete (95-100%)
+            //Stage 4: Cleanup & Complete (95-100%)
             await _progressService.ReportProgressAsync(
                 submissionBatchId, 98, "Finalizing",
                 "Cleaning up...", default);
@@ -213,7 +213,7 @@ public class ScanLogicService : IScanLogicService
                 extractionResult.DetectedStudents.Count,
                 gitHubUrls.Count);
 
-            // ✅ Report completion
+            //Report completion
             await _progressService.ReportCompletedAsync(
                 submissionBatchId,
                 extractionResult.DetectedStudents.Count,
