@@ -68,8 +68,9 @@ export function Sidebar() {
   };
 
   type Role = keyof typeof menuItems;
-
-  const key = userTokenData?.name as Role | undefined;
+  console.log("userTokenData", userTokenData);
+  const key = userTokenData?.role as Role | undefined;
+  console.log("key", key)
   const items = (key && menuItems[key]) || [];
 
   const handleLogout = () => {

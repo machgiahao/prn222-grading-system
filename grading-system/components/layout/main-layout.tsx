@@ -7,13 +7,19 @@ import { Sidebar } from "./sidebar";
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  useEffect(() => {
-    const accessToken = localStorage.getItem("accessToken");
-    if (!accessToken) {
-      router.push("/");
-    }
-  }, [router]);
+  const getToken = async () => {
+    const accessToken = await localStorage.getItem("accessToken");
+    return accessToken;
+  }
 
+  useEffect(() => {
+    getToken().then((accessToken) => {
+      if (!accessToken) {
+        router.push("/");
+      }
+    });
+  }, [router]);
+  
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />

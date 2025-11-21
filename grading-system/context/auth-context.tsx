@@ -3,9 +3,20 @@
 import http from "@/axios/http";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
 type UserTokenData = {
+  sub: string;
+  email: string;
+  name: string;
+  jti: string;
+  exp: number;
+  iss: string;
+  aud: string;
+  role: string;
+};
+
+type UserGETData = {
   sub: string;
   email: string;
   name: string;
@@ -67,15 +78,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await http.post("/auth/login", { email, password });
       setCurrentAccessToken(response.data.accessToken);
       localStorage.setItem("accessToken", response.data.accessToken);
-      const decoded: UserTokenData = jwtDecode(response.data.accessToken);
-      setUserTokenData(decoded);
-      handleRedirect(decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"].toLowerCase());
+      const decoded : UserGETData = jwtDecode(response.data.accessToken);
+      const user: UserTokenData = {
+        ...decoded,
+        role: decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+      }
+      setUserTokenData(user);
+      handleRedirect(user.role.toLowerCase());
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      setCurrentAccessToken(token);
+  
+      try {
+        const decoded: UserGETData = jwtDecode(token);
+        const user: UserTokenData = {
+          ...decoded,
+          role: decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+        };
+        setUserTokenData(user);
+      } catch {
+        console.error("Invalid token in localStorage");
+        localStorage.removeItem("accessToken");
+      }
+    }
+  }, []);
+  
 
   const register = async (
     username: string,
@@ -91,9 +126,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       setCurrentAccessToken(response.data.accessToken);
       localStorage.setItem("accessToken", response.data.accessToken);
-      const decoded: UserTokenData = jwtDecode(response.data.accessToken);
-      setUserTokenData(decoded);
-      handleRedirect(decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"].toLowerCase());
+      const decoded : UserGETData = jwtDecode(response.data.accessToken);
+      const user: UserTokenData = {
+        ...decoded,
+        role: decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+      }
+      setUserTokenData(user);
+      handleRedirect(user.role.toLowerCase());
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Registration failed");
     } finally {
@@ -101,7 +140,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => setCurrentAccessToken(null);
+  const logout = () => {
+    setCurrentAccessToken(null);
+    setUserTokenData(null);
+    localStorage.removeItem("accessToken");
+    
+    // Use setTimeout to defer navigation until after state updates complete
+    setTimeout(() => {
+      router.push("/");
+    }, 0);
+  };
 
   return (
     <AuthContext.Provider

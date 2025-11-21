@@ -2,15 +2,66 @@
 
 import { MainLayout } from "@/components/layout/main-layout";
 import { Card } from "@/components/ui/card";
+import { getAllExam, getALlRubrics, getAllUserAccounts } from "@/services/adminService";
 import { BarChart3, BookOpen, Users, CheckSquare } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function AdminDashboard() {
+  const [countExam, setCountExam] = useState(0);
+  const [countRubrics, setCountRubrics] = useState(0);
+  const [countUsers, setCountUsers] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAllExams = async () => {
+    try {
+      const response = await getAllExam();
+      setCountExam(response.length);
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+    }
+  }
+
+  const fetchAllRubrics = async () => {
+    try{
+      const response = await getALlRubrics();
+      setCountRubrics(response.length);
+    }catch(err){
+      console.error('Error fetching rubrics:', err);
+    }
+  }
+
+  const fetchAllUsers = async () => {
+    try{
+      const reponse = await getAllUserAccounts({pageIndex: 0, pageSize: 9999});
+      setCountUsers(reponse.count);
+      setLoading(false);
+    }catch(err){
+      console.error('Error fetching Users:', err);
+    }
+  }
+
+  useEffect(() => {
+    fetchAllExams();
+    fetchAllRubrics();
+    fetchAllUsers();
+  }, [])
+
   const stats = [
-    { label: "Total Exams", value: "12", icon: BookOpen, color: "bg-blue-500" },
-    { label: "Rubrics", value: "8", icon: CheckSquare, color: "bg-green-500" },
-    { label: "Users", value: "45", icon: Users, color: "bg-purple-500" },
-    { label: "Reports", value: "15", icon: BarChart3, color: "bg-orange-500" },
+    { label: "Total Exams", value: countExam, icon: BookOpen, color: "bg-blue-500" },
+    { label: "Rubrics", value: countRubrics, icon: CheckSquare, color: "bg-green-500" },
+    { label: "Users", value: countUsers, icon: Users, color: "bg-purple-500" },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-zinc-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <MainLayout>

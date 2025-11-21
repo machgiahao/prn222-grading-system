@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-import { AuthProvider } from "@/context/auth-context";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Exam Grading System",
@@ -35,10 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased`}>
-        <AuthProvider>
+        <Providers>
           {children}
-          <Analytics />
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );

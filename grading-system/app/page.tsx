@@ -104,15 +104,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                className="text-sm text-blue-400 hover:text-blue-300 font-medium"
-              >
-                Forgot password?
-              </button>
-            </div>
-
             <button
               onClick={handleLogin}
               disabled={isLoading}
