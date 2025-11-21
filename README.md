@@ -7,8 +7,6 @@ A comprehensive microservices-based grading system for automated code submission
 This system follows **Clean Architecture** and **Microservices** patterns with the following services:
 
 
-## 🚀 Features
-
 ### 🔐 Identity Service
 - **JWT Authentication** with refresh tokens
 - **Role-based authorization** (Manager, Examiner)
