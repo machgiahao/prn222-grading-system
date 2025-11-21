@@ -151,6 +151,9 @@ const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
             <TableHead className="w-[200px] text-gray-300 font-semibold text-sm py-3">
               Batch Id
             </TableHead>
+            <TableHead className="w-[200px] text-gray-300 font-semibold text-sm py-3">
+              Score
+            </TableHead>
             <TableHead className="w-[120px] text-center text-gray-300 font-semibold text-sm py-3">
               Actions
             </TableHead>
@@ -185,6 +188,12 @@ const SubmissionsTable: React.FC<SubmissionsTableProps> = ({
                   title={submission.submissionBatchId}
                 >
                   {submission.submissionBatchId}
+                </TableCell>
+                <TableCell
+                  className="text-xs text-gray-400 font-mono py-3 truncate"
+                  title={submission.score !== null ? submission.score.toString() : '0'}
+                >
+                  {submission.score !== null ? submission.score : '0'}
                 </TableCell>
                 <TableCell className="py-3">
                   <div className="flex justify-center space-x-1">

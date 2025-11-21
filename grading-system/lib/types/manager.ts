@@ -39,6 +39,7 @@ export interface SubmissionData {
     examinerId: string;
     examinerName: string;
     assignedAt: string;
+    totalScore: number | null;
 }
 
 export interface AllSubmissionsResponse {

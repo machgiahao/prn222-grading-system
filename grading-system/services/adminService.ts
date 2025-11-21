@@ -3,6 +3,9 @@ import { Semester, Subject } from "@/lib/types/admin";
 
 const semesterBaseUrl = "/semester";
 const subjectBaseUrl = "/subject";
+const reportBaseUrl = "/reports";
+const userBaseUrl = "/users";
+
 
 export const getSemesters = async (): Promise<Semester[]> => {
   try {
@@ -83,3 +86,53 @@ export const deleteSubject = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+export const exportReport = async (batchID: string): Promise<Blob> => {
+  try{
+    const response = await api.get(`${reportBaseUrl}/export/${batchID}`)
+    return response.data;
+  }catch (error) {
+    throw error;
+  }
+}
+
+export const approveSubmission = async (submissionID: string): Promise<void> => {
+  try{
+    await api.post(`${reportBaseUrl}/approve/${submissionID}`)
+  }catch (error) {
+    throw error;
+  }
+}
+
+export const createUserAccount = async (user: any) : Promise<void> => {
+  try{
+    await api.post(`${userBaseUrl}`, user)
+  }catch (error) {
+    throw error;
+  }
+}
+
+export const getAllUserAccounts = async (user: any) : Promise<void> => {
+  // co pagination
+  try{
+    await api.post(`${userBaseUrl}`, user)
+  }catch (error) {
+    throw error;
+  }
+}
+
+export const deleteUserAccount = async (userID: string) : Promise<void> => {
+  try{
+    await api.delete(`${userBaseUrl}/${userID}`)
+  }catch (error) {
+    throw error;
+  }
+}
+
+export const updateUserAccount = async (userID: string, user: any) : Promise<void> => {
+  try{
+    await api.put(`${userBaseUrl}/${userID}`, user)
+  }catch (error) {
+    throw error;
+  }
+}
