@@ -252,7 +252,7 @@ export default function ExaminerGradingPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-background">
+      <div className="flex justify-center items-center h-screen bg-zinc-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading grading details...</p>
@@ -264,7 +264,7 @@ export default function ExaminerGradingPage() {
   // Error state
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-background">
+      <div className="flex flex-col justify-center items-center h-screen bg-zinc-900">
         <div className="text-center max-w-md">
           <div className="text-destructive text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Error</h2>
@@ -293,14 +293,14 @@ export default function ExaminerGradingPage() {
   // Data not available state
   if (!gradingDetails) {
     return (
-      <div className="flex justify-center items-center h-screen bg-background">
+      <div className="flex justify-center items-center h-screen bg-zinc-900">
         <p className="text-muted-foreground">No grading details available.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-zinc-900">
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-8 max-w-full">
@@ -322,7 +322,7 @@ export default function ExaminerGradingPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div className="rounded-lg bg-card border border-border p-6">
+              <div className="rounded-lg bg-zinc-800 border border-border p-6">
                 <div className="flex items-center gap-3 mb-2">
                   <User className="h-5 w-5 text-primary" />
                   <p className="text-sm font-medium text-muted-foreground">
@@ -334,7 +334,7 @@ export default function ExaminerGradingPage() {
                 </p>
               </div>
 
-              <div className="rounded-lg bg-card border border-border p-6">
+              <div className="rounded-lg bg-zinc-800 border border-border p-6">
                 <div className="flex items-center gap-3 mb-2">
                   <FileText className="h-6 w-6 text-primary" />
                   <p className="text-sm font-medium text-muted-foreground">
@@ -354,7 +354,7 @@ export default function ExaminerGradingPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg bg-card border border-border p-6">
+              <div className="rounded-lg bg-zinc-800 border border-border p-6">
                 <div className="flex items-center gap-3 mb-2">
                   <Award className="h-5 w-5 text-primary" />
                   <p className="text-sm font-medium text-muted-foreground">
@@ -367,7 +367,7 @@ export default function ExaminerGradingPage() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-card border border-border p-6 mb-6">
+            <div className="rounded-lg bg-zinc-800 border border-border p-6 mb-6">
               <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Award className="h-5 w-5 text-primary" />
                 Grading Sheet
@@ -410,19 +410,19 @@ export default function ExaminerGradingPage() {
                         {gradingDetails.rubricItems.map((item) => (
                           <th
                             key={item.id}
-                            className="border border-border bg-muted p-3 text-center text-xs font-semibold text-foreground"
+                            className="border border-border bg-zinc-800 p-3 text-center text-xs font-semibold text-foreground"
                             style={{ width: "180px" }}
                           >
                             <div className="flex flex-col gap-1">
                               <span>{item.criteria}</span>
-                              <span className="text-primary font-bold">
+                              <span className="text-blue-400 font-bold">
                                 ({item.maxScore})
                               </span>
                             </div>
                           </th>
                         ))}
                         <th
-                          className="border border-border bg-primary/10 p-3 text-center text-sm font-bold text-primary"
+                          className="border border-border bg-blue-900/30 p-3 text-center text-sm font-bold text-blue-400"
                           style={{ width: "100px" }}
                         >
                           Total
@@ -434,7 +434,7 @@ export default function ExaminerGradingPage() {
                         {gradingDetails.rubricItems.map((item) => (
                           <td
                             key={item.id}
-                            className="border border-border bg-background p-2"
+                            className="border border-border bg-zinc-950 p-2"
                           >
                             <div className="flex flex-col gap-2">
                               <Input
@@ -450,25 +450,29 @@ export default function ExaminerGradingPage() {
                                     item.maxScore
                                   )
                                 }
-                                className="w-full text-center h-9 text-sm font-semibold px-0 placeholder:text-center"
+                                className="w-full text-center h-10 text-base font-semibold px-0 placeholder:text-center"
                                 placeholder="-"
                               />
-                              <div className="flex gap-1">
+
+                              <div className="grid grid-cols-2 gap-2">
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  size="sm"
-                                  className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
+                                  className="h-10 text-sm font-semibold rounded-lg bg-zinc-800 text-white"
                                   onClick={() => handleSetScore(item.id, 0)}
-                                  title="Set to 0"
                                 >
                                   0
                                 </Button>
+
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  size="sm"
-                                  className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
+                                  className="h-10 text-sm font-semibold rounded-lg bg-zinc-800 text-white disabled:opacity-40"
+                                  disabled={(() => {
+                                    const currentScore = scores[item.id] ?? 0;
+                                    const numericScore = Number(currentScore);
+                                    return numericScore - 0.5 < 0;
+                                  })()}
                                   onClick={() =>
                                     handleAdjustScore(
                                       item.id,
@@ -476,15 +480,19 @@ export default function ExaminerGradingPage() {
                                       item.maxScore
                                     )
                                   }
-                                  title="Subtract 0.5"
                                 >
                                   -0.5
                                 </Button>
+
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  size="sm"
-                                  className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
+                                  className="h-10 text-sm font-semibold rounded-lg bg-zinc-800 text-white disabled:opacity-40"
+                                  disabled={(() => {
+                                    const currentScore = scores[item.id] ?? 0;
+                                    const numericScore = Number(currentScore);
+                                    return numericScore >= item.maxScore;
+                                  })()}
                                   onClick={() =>
                                     handleAdjustScore(
                                       item.id,
@@ -492,19 +500,17 @@ export default function ExaminerGradingPage() {
                                       item.maxScore
                                     )
                                   }
-                                  title="Add 0.5"
                                 >
                                   +0.5
                                 </Button>
+
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  size="sm"
-                                  className="flex-1 h-7 text-xs px-1 hover:cursor-pointer"
+                                  className="h-10 text-sm font-semibold rounded-lg bg-zinc-800 text-white"
                                   onClick={() =>
                                     handleSetScore(item.id, item.maxScore)
                                   }
-                                  title="Set to Max"
                                 >
                                   Max
                                 </Button>
@@ -522,7 +528,7 @@ export default function ExaminerGradingPage() {
               </div>
             </div>
 
-            <div className="rounded-lg bg-card border border-border p-6 mb-6">
+            <div className="rounded-lg bg-zinc-800 border border-border p-6 mb-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">
                 Additional Comments (Optional)
               </h3>

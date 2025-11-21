@@ -26,7 +26,7 @@ export function Sidebar() {
 
   const menuItems = {
     Admin: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: BarChart3 },
+      { href: "/admin", label: "Dashboard", icon: BarChart3 },
       { href: "/admin/exams", label: "Exam Management", icon: BookOpen },
       { href: "/admin/rubrics", label: "Rubric Management", icon: FileText },
       {

@@ -13,6 +13,7 @@ type UserTokenData = {
   exp: number;
   iss: string;
   aud: string;
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": string;
 };
 
 interface AuthContextType {
@@ -41,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
 
   const handleRedirect = (role: string) => {
+    console.log("Redirecting based on role:", role);
     switch (role) {
       case "admin":
         router.push("/admin");
@@ -67,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("accessToken", response.data.accessToken);
       const decoded: UserTokenData = jwtDecode(response.data.accessToken);
       setUserTokenData(decoded);
-      handleRedirect(decoded.name.toLowerCase());
+      handleRedirect(decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"].toLowerCase());
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Login failed");
     } finally {
@@ -91,7 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("accessToken", response.data.accessToken);
       const decoded: UserTokenData = jwtDecode(response.data.accessToken);
       setUserTokenData(decoded);
-      handleRedirect(decoded.name.toLowerCase());
+      handleRedirect(decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"].toLowerCase());
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Registration failed");
     } finally {

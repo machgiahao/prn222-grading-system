@@ -43,7 +43,7 @@ export const getAllSubmissions = async (params: AllSubmissionParameters) : Promi
     const examId = params.examId ? `&examId=${params.examId}` : '';
     const submissionBatchId = params.submissionBatchId ? `&submissionBatchId=${params.submissionBatchId}` : '';
     const status = params.status ? `&status=${params.status}` : '';
-
+    console.log(`${submissionBaseUrl}?pageIndex=${pageIndex}&pageSize=${pageSize}${examId}${submissionBatchId}${status}`);
     const response = await api.get(`${submissionBaseUrl}?pageIndex=${pageIndex}&pageSize=${pageSize}${examId}${submissionBatchId}${status}`);
     return response.data;
   } catch (error) {
